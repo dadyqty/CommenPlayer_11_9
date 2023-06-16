@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+    <TextView
+        android:id="@+id/tv_name_rev"
+        android:layout_width="0dp"
+        android:layout_weight="0.5"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="张三"
+        android:textSize="20sp"/>
+    <TextView
+        android:id="@+id/tv_number_rev"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="123456789"
+        android:textSize="20sp"/>
+    <TextView
+        android:id="@+id/tv_msg_rev"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="3"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:text="短信内容"/>
+</LinearLayout>

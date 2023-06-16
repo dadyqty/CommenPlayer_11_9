@@ -1,0 +1,202 @@
+package com.d.commenplayer.fragment;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.support.design.widget.TabLayout;
+import android.support.v4.app.Fragment;
+import android.util.Log;
+import android.view.ContextMenu;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.d.commenplayer.R;
+import com.d.commenplayer.activity.ContactsDao;
+import com.d.commenplayer.activity.MsgInfo;
+import com.d.commenplayer.activity.MsgRevDao;
+import com.d.commenplayer.activity.message_show;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+
+public class Fragment2 extends Fragment implements AdapterView.OnItemClickListener{
+    private MsgInfoAdapter2 adapter;
+    private List<MsgInfo> data;
+    private MsgRevDao dao;
+    private ContactsDao dao2;
+    private ListView lv_main;
+    private TextView tv_empty;
+    public  int position;
+    private String type = "短信";
+    private boolean isShow;
+
+    @Nullable
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment2, null);
+        dao=new MsgRevDao(getActivity());
+        dao2=new ContactsDao(getActivity());
+        data= dao.getSend();
+        lv_main = (ListView) view.findViewById(R.id.lv_main);
+        tv_empty=(TextView)view.findViewById(R.id.tv_empty);
+        adapter=new MsgInfoAdapter2();
+        lv_main.setEmptyView(tv_empty);
+        lv_main.setAdapter(adapter);
+        lv_main.setOnCreateContextMenuListener(this);
+        lv_main.setOnItemClickListener(this);
+
+        return view;
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            System.out.println("position2:"+position);
+            this.position = position;
+    }
+
+    @Override
+    public void setUserVisibleHint(boolean isVisibleToUser) {
+        super.setUserVisibleHint(isVisibleToUser);
+        isShow=isVisibleToUser;
+        Log.e("TAG","Fragment2 is VisibleToUser="+isVisibleToUser);
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        if(isShow){
+            //添加3个item
+            menu.add(0, 1, 0, "查看");
+            menu.add(0, 2, 0, "重发");
+            menu.add(0, 3, 0, "删除");
+            menu.add(0, 4, 0, "取消");
+            //得到长按的position
+            AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+            position = info.position;
+        }
+    }
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        if (isShow){
+            MsgInfo msgInfo=data.get(position);
+            switch (item.getItemId()){
+                case 1:
+                    //准备一个带额外数据的intent对象
+                    Intent intent=new Intent(getActivity(), message_show.class);
+                    intent.putExtra("type",type);
+                    intent.putExtra("tv_msg_zhongduanhao",msgInfo.getNumber());
+                    intent.putExtra("tv_msg",msgInfo.getMsg());
+                    intent.putExtra("tv_gpsjd_rev","");
+                    intent.putExtra("tv_gpswd_rev","");
+                    intent.putExtra("tv_time_rev","");
+                    intent.putExtra("rili","");
+                    startActivity(intent);
+                    break;
+                case 2:
+                    int resultCode=34;
+                    //准备一个带额外数据的intent对象
+                    Intent intent2=new Intent();
+                    intent2.putExtra("ZHONGDUANHAO",msgInfo.getNumber());
+                    //设置结果
+                    getActivity().setResult(resultCode,intent2);
+                    getActivity().finish();
+                    break;
+                case 3:
+                    new AlertDialog.Builder(getActivity())
+                            .setTitle("提示")
+                            .setMessage("确定删除？")
+                            .setOnKeyListener(new DialogInterface.OnKeyListener() {
+                                @Override
+                                public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                                    if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                                        Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                                        btn_neg.performClick(); //点击取消
+                                    }
+                                    if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+                                        Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                        btn_pos.performClick(); //点击确定
+                                    }
+                                    return false;
+                                }
+                            })
+                            .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    //1).删除数据表对应的数据
+                                    dao.deleteById(msgInfo.getId());
+                                    //2).删除List对应的数据
+                                    data.remove(position);
+                                    //3).通知更新列表
+                                    adapter.notifyDataSetChanged();
+                                    //4).提示
+                                    Toast.makeText(getActivity(), "删除成功！", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("取消", null)
+                            .show();
+                    break;
+                case 4:
+                    break;
+                default:
+                    break;
+            }
+        }
+        return super.onContextItemSelected(item);
+    }
+
+
+    class MsgInfoAdapter2 extends BaseAdapter {
+
+        @Override
+        public int getCount() {
+            return data.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return data.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return 0;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            if (convertView == null) {
+                convertView = View.inflate(getActivity(), R.layout.msg_item, null);
+                AbsListView.LayoutParams param = new AbsListView.LayoutParams(MATCH_PARENT,50);
+                convertView.setLayoutParams(param);
+            }
+            MsgInfo msgInfo=data.get(position);
+            TextView name=(TextView)convertView.findViewById(R.id.tv_name_rev);
+            TextView number=(TextView)convertView.findViewById(R.id.tv_number_rev);
+            TextView msg=(TextView)convertView.findViewById(R.id.tv_msg_rev);
+            String msg_name=dao2.getContactsName(msgInfo.getNumber());
+            if(msg_name!=null){
+                name.setText(msg_name);
+            }else {
+                name.setText("未知用户");
+            }
+            number.setText(msgInfo.getNumber());
+            msg.setText(msgInfo.getMsg());
+            return convertView;
+        }
+    }
+}

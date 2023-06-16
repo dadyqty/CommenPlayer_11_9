@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <EditText
+        android:id="@+id/jingdu_set"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:hint="设置经度(示例:2201503)"/>
+    <EditText
+        android:id="@+id/weidu_set"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:hint="设置纬度(示例:092803)"/>
+    <EditText
+        android:id="@+id/xiangxian"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:hint="设置象限(0:NE,1:NW,2:SW,3:SE)"/>
+
+</LinearLayout>

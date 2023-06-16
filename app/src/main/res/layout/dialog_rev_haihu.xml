@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/xindaohao2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:text="经度增量:0"
+        android:textSize="24dp" />
+
+    <TextView
+        android:id="@+id/xindaohao3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:text="纬度增量:0"
+        android:textSize="24dp" />
+
+    <TextView
+        android:id="@+id/zhongduanhao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:text="象限:1"
+        android:textSize="24dp" />
+
+    <TextView
+        android:id="@+id/xindaohao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:text="参考点经度:123"
+        android:textSize="24dp" />
+
+    <TextView
+        android:id="@+id/xindaohao4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:text="参考点纬度:123"
+        android:textSize="24dp" />
+
+
+</LinearLayout>

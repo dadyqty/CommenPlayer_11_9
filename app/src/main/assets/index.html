@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>XYZ</title>
+    <link rel="stylesheet" href="ol/ol.css">
+    <style>
+ .map {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+    </style>
+
+  </head>
+  <body>
+    <div id="map" class="map">
+      <div id="zoom-out"></div>
+      <div id="zoom-in"></div>
+      <button id="pantoright" >右</button>
+      <button id="pantoleft" >左</button>
+      <button id="pantoup" >上</button>
+      <button id="pantodown" >下</button>
+      <div id="restore"></div>
+    </div>
+    <script type="module" src="./demo.js"></script>
+    <script type="text/javascript">
+    function zoomIn(){
+      let div = document.getElementById("zoom-in");
+      div.click();
+    }
+    function zoomOut(){
+      let div = document.getElementById("zoom-out");
+      div.click();
+    }
+    function pantoright(){
+      let div = document.getElementById("pantoright");
+      div.click();
+    }
+    function pantoleft(){
+      let div = document.getElementById("pantoleft");
+      div.click();
+    }
+    function pantoup(){
+      let div = document.getElementById("pantoup");
+      div.click();
+    }
+    function pantodown(){
+      let div = document.getElementById("pantodown");
+      div.click();
+    }
+    function restore(){
+      let div = document.getElementById("restore");
+      div.click();
+    }
+    </script>
+  </body>
+</html>
