@@ -1,5 +1,6 @@
 package com.d.commenplayer.activity;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -65,12 +66,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 
+import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 
@@ -83,10 +87,15 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private TextView xingdaohao;
     private TextView jingdu_main;
     private TextView weidu_main;
-    private boolean isVideo;
+
+    private TextView xuanhuhujiao;
+
+    private TextView qunhuhujiao;
+
+    private boolean isVideo = false;
     private boolean ignoreNet;
-    private boolean webViewisSelected = false;
-    private boolean onReceivedError = true;
+    private boolean webViewisSelected = true;
+    private boolean onReceivedError = false;
     private MsgRevDao dao;
 
     private TextSwitcher tv_switcher; //广告滚动显示窗口
@@ -137,6 +146,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private ArrayList<String> alist3;
     private ArrayList<String> alist4;
     private ArrayList<String> alist5;
+
+    private Map<String,TextView> hujiaomap = new HashMap<String,TextView>();
     //    private LogFragment mLogFragment;
     private Map<String, String> contactsmap = new LinkedHashMap<>();   // name number
     public static Bitmap bitmap;
@@ -184,7 +195,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         webView.getSettings().setDisplayZoomControls(false);//是否使用内置缩放机制
         webView.getSettings().setJavaScriptEnabled(true);  //设置与Js交互的权限
         webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true); // 设置允许JS弹窗
-        webView.getSettings().setSupportZoom(true);// 是否支持变焦
+        webView.getSettings().setSupportZoom(false);// 是否支持变焦
         webView.getSettings().setBuiltInZoomControls(true);// 设置WebView是否应该使用其内置变焦机制,显示放大缩小
         webView.getSettings().setUseWideViewPort(true);//是否开启控件viewport。默认false，自适应；true时标签中指定宽度值生效
         webView.getSettings().setLoadWithOverviewMode(true);
@@ -192,6 +203,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         webView.getSettings().setGeolocationEnabled(true);
         //使用缓存，否则localstorage等无法使用
         webView.getSettings().setDomStorageEnabled(true);
+        webView.setScrollContainer(false);
+        webView.setVerticalScrollBarEnabled(false);
+        webView.setHorizontalScrollBarEnabled(false);
 
         // 当前页面打开网页
         webView.setWebViewClient(new WebViewClient() {
@@ -210,7 +224,6 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 }
                 return false;
             }
-
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 super.onReceivedError(view, errorCode, description, failingUrl);
@@ -259,7 +272,19 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                              String time = String.format("通话时间：%02d:%02d:%02d", hour, minute, seconds % 60);
                              textView_timer.setText(time);
                              if (running) {
-                                 textView_ComStatus.setText("呼叫状态：已接通");
+                                 for (String sb:hujiaomap.keySet()
+                                      ) {
+                                     if (sb.equals("xuanhuhujiao")) {
+                                         xuanhuhujiao.setText("呼叫成功！");
+                                         hujiaomap.clear();
+                                     }
+                                     else if(sb.equals("qunhuhujiao"))
+                                     {
+                                         qunhuhujiao.setText("呼叫成功！");
+                                         hujiaomap.clear();
+                                     }
+                                 }
+//                                 textView_ComStatus.setText("呼叫状态：已接通");
                                  if(dialogtemp != null)
                                  {
                                      dialogtemp.dismiss();
@@ -310,7 +335,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     public boolean dispatchKeyEvent(KeyEvent event) {  //按键发送数据
         Log.e("TAG","dispatchKeyEvent:"+event.getKeyCode());
         if (event.getKeyCode() == 62 && event.getAction() == KeyEvent.ACTION_UP) { // 选中海图
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:restore()", new ValueCallback<String>() {
                     @Override
@@ -325,7 +350,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }   //翻页功能
         if (event.getKeyCode() == 279 && event.getAction() == KeyEvent.ACTION_UP) { // 海图放大
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:zoomIn()", new ValueCallback<String>() {
                     @Override
@@ -336,7 +361,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }
         if (event.getKeyCode() == 277 && event.getAction() == KeyEvent.ACTION_UP) { // 海图缩小
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:zoomOut()", new ValueCallback<String>() {
                     @Override
@@ -347,7 +372,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }
         if (event.getKeyCode() == 19 && event.getAction() == KeyEvent.ACTION_UP) { // 海图上移
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:pantoup()", new ValueCallback<String>() {
                     @Override
@@ -358,7 +383,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }
         if (event.getKeyCode() == 20 && event.getAction() == KeyEvent.ACTION_UP) { // 海图下移
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:pantodown()", new ValueCallback<String>() {
                     @Override
@@ -369,7 +394,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }
         if (event.getKeyCode() == 21 && event.getAction() == KeyEvent.ACTION_UP) { //
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:pantoleft()", new ValueCallback<String>() {
                     @Override
@@ -380,7 +405,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }
         if (event.getKeyCode() == 22 && event.getAction() == KeyEvent.ACTION_UP) { //
-            if(webViewisSelected)
+            if(!isVideo)
             {
                 webView.evaluateJavascript("javascript:pantoright()", new ValueCallback<String>() {
                     @Override
@@ -478,6 +503,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                         Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                         btn_neg.performClick(); //点击取消
+                        sendKeyCode(216);
                     }
                     if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                         Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -575,6 +601,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -587,21 +614,32 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         EditText zhongduanhao = (EditText) view.findViewById(R.id.zhongduanhao);
                         EditText xindaohao = (EditText) view.findViewById(R.id.xindaohao);
 
+
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,false);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+
                             if (zhongduanhao.getText().toString().length() < 9) {
                                 ToastUtil.show(SimpleActivity.this, "输入错误");
                             } else {
                                 String a = zhongduanhao.getText().toString();
                                 String b = xindaohao.getText().toString();
+                                hujiaomap.put("xuanhuhujiao",xuanhuhujiao);
                                 b = Integer.toHexString(Integer.parseInt(b));
                                 while (b.length() < 4) {
                                     b = "0".concat(b);
                                 }
                                 String CheckData = "01B3000A16" + "0" + a + b;
                                 String CheckSum = GetCheckSum(CheckData);
-                                ToastUtil.show(SimpleActivity.this, "电台号: " + a + ", 信道号: " + b);
-                                textView_ComStatus.setText("呼叫状态：正在呼叫。。。。");
+//                                ToastUtil.show(SimpleActivity.this, "电台号: " + a + ", 信道号: " + b);
+                                xuanhuhujiao = (TextView) view.findViewById(R.id.xuanhuhujiao);
+                                xuanhuhujiao.setText("正在呼叫......");
                                 kind_of_hujiao.setText("呼叫种类：选呼");
                                 hujiao_number.setVisibility(View.VISIBLE);
                                 hujiao_number.setText("对方船号："+a);
@@ -613,14 +651,21 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            ToastUtil.show(SimpleActivity.this, "取消选呼");
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,true);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+//                            ToastUtil.show(SimpleActivity.this, "取消选呼");
                         }
                     });
                     Dialog dialog1 = builder.create();
                     dialog1.show();
                     WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
                     params.width = 400;
-                    params.height = 280;
+                    params.height = 300;
                     dialog1.getWindow().setAttributes(params);
                     break;
                 case 2:
@@ -636,6 +681,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         }    //选呼
         if (event.getKeyCode() == 114 && event.getAction() == KeyEvent.ACTION_UP) {  //求救呼发按键识别
+//            if(event.getEventTime() - event.getDownTime()<1000)
+//            {
+//                return false;
+//            }
             if(running)
             {
                 Toast.makeText(this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
@@ -669,6 +718,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,false);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+
                             String qunhuString = qunhuhao.getText().toString();
                             String xindaoString = xindaohao.getText().toString();
                             xindaoString = Integer.toHexString(Integer.parseInt(xindaoString));
@@ -687,7 +744,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                 String CheckSum = GetCheckSum(CheckData);
                                 String data = GetSendData(CheckData, CheckSum);
                                 sendData(data);
-                                ToastUtil.show(SimpleActivity.this, "正在发送中。。。");
+//                                ToastUtil.show(SimpleActivity.this, "正在发送中。。。");
+                                qunhuhujiao = (TextView) view.findViewById(R.id.qunhuhhujiao);
+                                qunhuhujiao.setText("正在呼叫......");
+                                hujiaomap.put("qunhuhujiao",qunhuhujiao);
                                 kind_of_hujiao.setText("呼叫种类：群呼");
                                 hujiao_number.setVisibility(View.VISIBLE);
                                 hujiao_number.setText("群号："+qunhuString);
@@ -697,7 +757,13 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,true);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                         }
                     });
                     builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
@@ -739,6 +805,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -830,6 +897,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -887,6 +955,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -989,7 +1058,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         player.setVisibility(View.VISIBLE);
                         webView.setVisibility(View.INVISIBLE);
                         isVideo = true;
-                        webViewisSelected = false;
+//                        webViewisSelected = false;
                     }
                     Toast.makeText(SimpleActivity.this, "切换按键按下", Toast.LENGTH_SHORT).show();
                     break;
@@ -1138,6 +1207,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -1203,6 +1273,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -1374,6 +1445,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -1504,6 +1576,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -1560,6 +1633,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                                 btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
                             }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -1652,6 +1726,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             builder2.setView(view2);
 
             builder2.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                @SuppressLint("MissingInflatedId")
                 EditText chuanweihufa = (EditText) view2.findViewById(R.id.qunhuhao);
 
                 @Override
@@ -1671,6 +1746,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
                         Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
                         btn_neg.performClick(); //点击取消
+                        sendKeyCode(216);
                     }
                     if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                         Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -1837,7 +1913,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
             }
         });
-        player.play(getResources().getString(R.string.url1));
+        player.play(getResources().getString(R.string.urlx));
         Log.i("播放打点", "initPlayer:开始播放 ");
     }  //只需要修改播放的地址，即可
 
@@ -2464,8 +2540,19 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     data = "";
                     break;
                 case "29":
-                    ToastUtil.showOne(this, "连接失败，请重试！");
-                    sendKeyCode(216);
+                    for (String sb:hujiaomap.keySet()
+                    ) {
+                        if (sb.equals("xuanhuhujiao")) {
+                            xuanhuhujiao.setText("呼叫失败！");
+                            hujiaomap.clear();
+                        }
+                        else if(sb.equals("qunhuhujiao"))
+                        {
+
+                        }
+                    }
+//                    ToastUtil.showOne(this, "连接失败，请重试！");
+//                    sendKeyCode(216);
                     data_use = false;
                     data = "";
                     break;
@@ -2549,9 +2636,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
      */
 
     private Map<String, Object> Serial_Manage(String Serial_data, StringBuilder temp, String data, Boolean data_use) {
-        Log.e("串口接收", "当前值GetMsg: " + Serial_data);
+//        Log.e("串口接收", "当前值GetMsg: " + Serial_data);
         temp.append(Serial_data);
-        Log.e("串口接收", "缓冲区temp: " + temp);
+//        Log.e("串口接收", "缓冲区temp: " + temp);
         Map<String, Object> map = new HashMap<String, Object>();
         int start, end, i;
         String length, ComputeCheckSum, GetCheckSum, mcmd;
@@ -2567,13 +2654,13 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     i = Integer.parseInt(length, 16);
                     ComputeCheckSum = GetCheckSum(temp.substring(start, end + 8).substring(8, 2 * i + 12)); //计算校验和
                     GetCheckSum = temp.substring(start, end + 8).substring(2 * i + 12, 2 * i + 16);        //获得传来的校验和
-                    Log.e("串口接收", "--算校验--" + ComputeCheckSum);
-                    Log.e("串口接收", "--接收校验--" + GetCheckSum);
+//                    Log.e("串口接收", "--算校验--" + ComputeCheckSum);
+//                    Log.e("串口接收", "--接收校验--" + GetCheckSum);
                     mcmd = temp.substring(start, end + 8).substring(16, 18);      //获取指令
                     if (ComputeCheckSum.equals(GetCheckSum)) {   //如果校验成功
                         data_use = true;
                         data = temp.substring(start, end + 8);
-                        Log.e("串口接收", "--校验成功--" + data);
+//                        Log.e("串口接收", "--校验成功--" + data);
                     } else {
                         data_use = false;
                         data = "";

@@ -20,5 +20,13 @@
         android:inputType="number"
         android:hint="输入信道号"/>
 
+    <TextView
+        android:id="@+id/qunhuhhujiao"
+        android:layout_below="@+id/xindaohao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="25dp" />
+
 
 </RelativeLayout>

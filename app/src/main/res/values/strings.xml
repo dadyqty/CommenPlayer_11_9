@@ -3,6 +3,7 @@
     <string name="app_name" translatable="false">CommenPlayer</string>
 
     <string name="url1" translatable="false">udp://@:5003</string>
+    <string name="urlx" translatable="false">udp://@192.168.123.50:5000</string>
     <string name="url2" translatable="false">rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov</string>
     <string name="url3" translatable="false">http://ivi.bupt.edu.cn/hls/cctv3hd.m3u8</string>
     <string name="url4" translatable="false">udp://@192.168.1.104:5004</string>`
