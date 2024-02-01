@@ -69,7 +69,7 @@ public class ContactsDao {
         SQLiteDatabase database = dbHelper.getReadableDatabase();
         //2.执行query select * from black number
         //查询根据_id 实现倒序
-        Cursor cursor = database.query("contacts_info", null, null, null, null, null, "_id desc");
+        Cursor cursor = database.query("contacts_info", null, null, null, null, null, "name asc");
         //3.从cursor中取出所有数据并封装到List中
         while (cursor.moveToNext()){
             //id

@@ -2,8 +2,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="horizontal">
+<LinearLayout
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="5"
     android:orientation="vertical">
-
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -13,10 +17,11 @@
         android:maxLength="9"
         android:hint="请输入船台号(限数字)"/>
 
-    <EditText
+    <com.d.commenplayer.activity.CustomEditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/message_short"
+        android:inputType="text"
         android:text="西安电子科技大学。abcdefgh123456多发几个试一下看看76876fasfafxvfsddvcxvvxcvdssfdvsbsdaxzcfveasgagbbgtbdfbdfgsdvdfbttdbdf"
         android:hint="输入短信内容"/>
 
@@ -26,10 +31,92 @@
         android:id="@+id/show_language"
         />
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="发送"/>
+<!--    <Button-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="发送"/>-->
+</LinearLayout>
+    <LinearLayout
+        android:layout_marginTop="50dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:id="@+id/duanxindanfa"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="单发"/>
+        <Button
+            android:layout_marginTop="40dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginRight="20dp"
+            android:id="@+id/duanxinqunfa"
+            android:textSize="20dp"
+            android:text="群发"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duanxinduofa"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="多发"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duanxinshoujianxiang"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="收件箱"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duanxinfajianxiang"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="发件箱"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duanxinf6"
+            android:visibility="invisible"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text=""/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duanxinf7"
+            android:visibility="invisible"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text=""/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duanxinf8"
+            android:visibility="invisible"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text=""/>
 
+    </LinearLayout>
 
 </LinearLayout>

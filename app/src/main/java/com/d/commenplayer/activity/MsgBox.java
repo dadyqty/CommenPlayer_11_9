@@ -2,6 +2,7 @@ package com.d.commenplayer.activity;
 
 import android.app.Instrumentation;
 import android.content.Intent;
+import android.os.Build;
 import android.support.annotation.Nullable;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
@@ -37,6 +38,7 @@ public class MsgBox extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_msg_box);
+        Intent intent = getIntent();
 
         posplusflag = false;
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -54,7 +56,6 @@ public class MsgBox extends AppCompatActivity {
         tabLayout.addTab(tabLayout.newTab().setText(tab_title_list.get(1)));
         tabLayout.addTab(tabLayout.newTab().setText(tab_title_list.get(2)));
 
-        tabLayout.setSelectedTabIndicatorHeight(0);
 
         fragment1 = new Fragment1();
         fragment2 = new Fragment2();
@@ -64,14 +65,18 @@ public class MsgBox extends AppCompatActivity {
         fragment_list.add(fragment2);
         fragment_list.add(fragment3);
 
+        count_changlanguage= Integer.valueOf(intent.getStringExtra("count_changlanguage"));
+        int select_tablelayout = intent.getIntExtra("select_tablelayout",0);
+
+        tabLayout.setSelectedTabIndicatorHeight(1);
+
         adapter = new MyFragmentPagerAdapter(getSupportFragmentManager(), tab_title_list, fragment_list);
 
         viewPager.setAdapter(adapter);//给ViewPager设置适配器
         tabLayout.setupWithViewPager(viewPager);//将TabLayout与Viewpager联动起来
         tabLayout.setTabsFromPagerAdapter(adapter);//给TabLayout设置适配器
+        viewPager.setCurrentItem(select_tablelayout);
 
-        Intent intent = getIntent();
-        count_changlanguage= Integer.valueOf(intent.getStringExtra("count_changlanguage"));
 //        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
 //            @Override
 //            public void onTabSelected(TabLayout.Tab tab) {
@@ -137,7 +142,6 @@ public class MsgBox extends AppCompatActivity {
             //设置结果
             setResult(resultCode,data);
             finish();
-            ToastUtile.showText(MsgBox.this, "返回主界面");
         }
         if (event.getKeyCode()== 62 && event.getAction() == KeyEvent.ACTION_UP){  //归中键
             getCurrentFocus().performLongClick();

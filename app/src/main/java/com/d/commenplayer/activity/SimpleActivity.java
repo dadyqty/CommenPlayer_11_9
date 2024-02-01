@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.Instrumentation;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -20,14 +21,18 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
@@ -36,12 +41,14 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewSwitcher;
 
+import com.d.commenplayer.MainActivity;
 import com.d.commenplayer.R;
 import com.d.commenplayer.comn.Device;
 import com.d.commenplayer.comn.message.IMessage;
@@ -75,6 +82,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Vector;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 
@@ -90,7 +98,17 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
     private TextView xuanhuhujiao;
 
+    private TextView xuanhuhujiaojd;
+
+    private TextView xuanhuhujiaowd;
+
     private TextView qunhuhujiao;
+
+    private TextView haihuhujiao;
+
+    private TextView haihuhujiaojd;
+
+    private TextView haihuhujiaowd;
 
     private boolean isVideo = false;
     private boolean ignoreNet;
@@ -118,6 +136,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private boolean qiujiuflag = false;
     private boolean qixiang = false;
     private int seconds = 0; //计时时间
+
+    private int skbuf = 0;
+
+    private int skliangdu = 0;
     private TextView textView_timer;
     private TextView textView_ComStatus;
     private TextView kind_of_hujiao;
@@ -141,6 +163,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private boolean mOpened = false;
     private TextView qunhao;
     private int changlanguage=1;
+
+    private Boolean caplook = false;
     private ArrayList<String> alist;
     private ArrayList<String> alist2;
     private ArrayList<String> alist3;
@@ -150,6 +174,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private Map<String,TextView> hujiaomap = new HashMap<String,TextView>();
     //    private LogFragment mLogFragment;
     private Map<String, String> contactsmap = new LinkedHashMap<>();   // name number
+
+    private Vector<Integer> state_vector ;//各种状态，在timerhandler处理
+
+    private int[] timer_cnt ;
     public static Bitmap bitmap;
 
     @Override
@@ -170,6 +198,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         initCommucationView();
         initTimeView();
         runTime();
+        state_vector = new Vector<>();
+        new Thread(new Mythread()).start();
+        timer_cnt = new int[50];
 
         webViewSet();
 
@@ -189,7 +220,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
 
     }
-
+    public boolean onKeyLongPress(int keyCode, KeyEvent event)
+    {
+        System.out.println(keyCode);
+        return false;
+    }
     private void webViewSet() {
         webView.loadUrl("http://127.0.0.1:8080/index.html");
         webView.getSettings().setDisplayZoomControls(false);//是否使用内置缩放机制
@@ -281,6 +316,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                      else if(sb.equals("qunhuhujiao"))
                                      {
                                          qunhuhujiao.setText("呼叫成功！");
+                                         hujiaomap.clear();
+                                     } else if (sb.equals("haihuhujiao")) {
+                                         haihuhujiao.setText("呼叫成功！");
                                          hujiaomap.clear();
                                      }
                                  }
@@ -393,6 +431,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 });
             }
         }
+        if (event.getKeyCode() == 58 && event.getAction() == KeyEvent.ACTION_UP) { //
+                sendKeyCode(KeyEvent.KEYCODE_POWER);
+        }
         if (event.getKeyCode() == 21 && event.getAction() == KeyEvent.ACTION_UP) { //
             if(!isVideo)
             {
@@ -427,7 +468,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     button5.setText("电话");
                     button6.setText("亮度");
                     button7.setText("音量");
-                    button8.setText("通讯录"); //联系人
+                    button8.setText("联系人"); //联系人
                     break;
                 case 2:
                     button1.setText("定位呼");
@@ -437,7 +478,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     button5.setText("发件箱");
                     button6.setText("对讲单发");
                     button7.setText("信道设置");
-                    button8.setText("发短信");
+                    button8.setText("短信");
                     break;
                 case 3:
                     button1.setText("时间设置");
@@ -517,7 +558,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 public void onClick(DialogInterface dialog, int which) {
                     String number = et_set.getText().toString();
                     int n = Integer.parseInt(number);
-                    if ((n >= 1 && n <= 999)) {  //(n >= 1 && n <= 280) || (n >= 321 && n <= 440)
+                    if ((n >= 1 && n <= 960)) {  //(n >= 1 && n <= 280) || (n >= 321 && n <= 440)
                         while (number.length() < 3) {
                             number = "0".concat(number);
                         }
@@ -639,10 +680,13 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                 String CheckSum = GetCheckSum(CheckData);
 //                                ToastUtil.show(SimpleActivity.this, "电台号: " + a + ", 信道号: " + b);
                                 xuanhuhujiao = (TextView) view.findViewById(R.id.xuanhuhujiao);
+                                xuanhuhujiaojd = (TextView)view.findViewById(R.id.jindu);
+                                xuanhuhujiaowd = (TextView)view.findViewById(R.id.weidu);
                                 xuanhuhujiao.setText("正在呼叫......");
-                                kind_of_hujiao.setText("呼叫种类：选呼");
-                                hujiao_number.setVisibility(View.VISIBLE);
-                                hujiao_number.setText("对方船号："+a);
+
+//                                kind_of_hujiao.setText("呼叫种类：选呼");
+//                                hujiao_number.setVisibility(View.VISIBLE);
+//                                hujiao_number.setText("对方船号："+a);
                                 String data = GetSendData(CheckData, CheckSum);
                                 sendData(data);
                             }
@@ -658,14 +702,31 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             } catch (Exception e) {
                                 throw new RuntimeException(e);
                             }
+                            if (running) {
+                                running = false;
+                                seconds = 0;
+                                pttanjian.setText(" ");
+                                Toast.makeText(SimpleActivity.this, "通话挂断", Toast.LENGTH_LONG).show();
+                            }
+                            kind_of_hujiao.setText("呼叫种类：无");
+                            hujiao_number.setVisibility(View.GONE);
+                            textView_ComStatus.setText("呼叫状态：无呼叫");
+                            qiujiuflag = false;
+                            String CheckData = "01B3000325";
+                            String CheckSum = GetCheckSum(CheckData);
+                            String data = GetSendData(CheckData, CheckSum);
+                            sendData(data);
 //                            ToastUtil.show(SimpleActivity.this, "取消选呼");
                         }
                     });
                     Dialog dialog1 = builder.create();
                     dialog1.show();
                     WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
+                    params.gravity = Gravity.BOTTOM|Gravity.RIGHT;
+                    params.x = 50;
+                    params.y = 50;
                     params.width = 400;
-                    params.height = 300;
+                    params.height = 350;
                     dialog1.getWindow().setAttributes(params);
                     break;
                 case 2:
@@ -728,6 +789,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
                             String qunhuString = qunhuhao.getText().toString();
                             String xindaoString = xindaohao.getText().toString();
+                            if(qunhuString.length()==0||xindaoString.length()==0)
+                                    return;
+
                             xindaoString = Integer.toHexString(Integer.parseInt(xindaoString));
 
                             while (xindaoString.length() < 4) {
@@ -764,6 +828,20 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             } catch (Exception e) {
                                 throw new RuntimeException(e);
                             }
+                            if (running) {
+                                running = false;
+                                seconds = 0;
+                                pttanjian.setText(" ");
+                                Toast.makeText(SimpleActivity.this, "通话挂断", Toast.LENGTH_LONG).show();
+                            }
+                            kind_of_hujiao.setText("呼叫种类：无");
+                            hujiao_number.setVisibility(View.GONE);
+                            textView_ComStatus.setText("呼叫状态：无呼叫");
+                            qiujiuflag = false;
+                            String CheckData = "01B3000325";
+                            String CheckSum = GetCheckSum(CheckData);
+                            String data = GetSendData(CheckData, CheckSum);
+                            sendData(data);
                         }
                     });
                     builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
@@ -817,6 +895,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     Dialog dialog1 = builder.create();
                     dialog1.show();
                     WindowManager.LayoutParams params22 = dialog1.getWindow().getAttributes();
+                    params22.gravity = Gravity.BOTTOM|Gravity.RIGHT;
+                    params22.x = 50;
+                    params22.y = 50;
                     params22.width = 400;
                     params22.height = 300;
                     dialog1.getWindow().setAttributes(params22);
@@ -1039,8 +1120,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 case 1:
                     Intent intent46 = new Intent(SimpleActivity.this, MsgBox.class);
                     intent46.putExtra("count_changlanguage",String.valueOf(changlanguage));
+                    intent46.putExtra("caplook",caplook);
                     startActivityForResult(intent46, 9);
-
+                    intent46.putExtra("select_tablelayout",0);
 //                    Intent intent = new Intent(SimpleActivity.this, ContactsActivity.class);
 //                    intent.putExtra("count_changlanguage",String.valueOf(changlanguage));
 //                    startActivityForResult(intent, 9);
@@ -1080,6 +1162,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     }
                     Intent intent48 = new Intent(SimpleActivity.this, SendMessageActivity.class);
                     intent48.putExtra("count_changlanguage",String.valueOf(changlanguage));
+                    intent48.putExtra("caplook",caplook);
                     intent48.putExtra("kind","02");
                     startActivityForResult(intent48, 9);
                     break;
@@ -1131,6 +1214,136 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             switch (count) {
                 case 1:
                     Toast.makeText(SimpleActivity.this, "亮度按键", Toast.LENGTH_SHORT).show();
+                    AlertDialog.Builder builder1 = new AlertDialog.Builder(SimpleActivity.this);
+                    builder1.setIcon(R.drawable.ic_launcher_foreground);
+                    builder1.setTitle("亮度调节");
+                    View view1 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.activity_yinliang, null);
+                    builder1.setView(view1);
+                    TextView v1 = view1.findViewById(R.id.yinliangshehzi);
+                    TextView v2 = view1.findViewById(R.id.yinliangfanwei);
+                    EditText e1 = view1.findViewById(R.id.yinliang);
+                    v1.setText("亮度设置");
+                    v2.setText("亮度（0-7）");
+                    e1.setHint("输入亮度值（0-7）");
+                    SeekBar sk = view1.findViewById(R.id.seek_bar);
+                    sk.setMax(7);
+                    sk.setKeyProgressIncrement(1);
+                    sk.setProgress(skliangdu);
+
+                    builder1.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+
+                        EditText liangdu = (EditText) view1.findViewById(R.id.yinliang);
+
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String a = liangdu.getText().toString();
+                            if(a.length()==0)
+                            {
+                                setAppScreenBrightness((255/7)*sk.getProgress());
+                                return;
+                            }
+                            int ld = Integer.parseInt(a);
+                            if(ld>0&&ld<=7)
+                            {
+                                getScreenBrightness(SimpleActivity.this);
+                                // 设置APP 屏幕亮度后，系统Setting亮度将对此app 不生效
+                                setAppScreenBrightness((255/7)*ld);
+                                skliangdu = ld;
+                                allowModifySettings();
+                            }
+                            else if(ld>7)
+                            {
+                                Toast.makeText(SimpleActivity.this, "设置范围为1-7", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                    builder1.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    });
+                    builder1.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                        @Override
+                        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                            if (keyCode == 142 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(8);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入1");
+                            }
+                            if (keyCode == 132 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(9);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入2");
+                            }
+                            if (keyCode == 133 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(10);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入3");
+                            }
+                            if (keyCode == 134 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(11);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入=4");
+                            }
+                            if (keyCode == 135 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(12);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入5");
+                            }
+                            if (keyCode == 136 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(13);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入6");
+                            }
+                            if (keyCode == 137 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(14);
+                            }
+                            if (keyCode == 138 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(15);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入8");
+                            }
+                            if (keyCode == 139 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(16);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入9");
+                            }
+                            if (keyCode == 141 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sendKeyCode(7);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                            }
+                            if (keyCode == 217 && event.getAction() == KeyEvent.ACTION_UP) { //退格按键，对应翻页
+                                sendKeyCode(67);
+                                Log.i("按键输入", "dispatchKeyEvent: 输入退格"); //keycode 67
+                            }
+                            if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                                btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
+                            }
+                            if (keyCode == 141 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sk.setVisibility(View.VISIBLE);
+                                if(sk.getProgress()>0) {
+                                    int a = sk.getProgress() - 1;
+                                    sk.setProgress(a);
+                                    skliangdu = a;
+                                    setAppScreenBrightness((255/7)*a);
+                                    allowModifySettings();
+                                }
+                            }
+                            if (keyCode == 131 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sk.setVisibility(View.VISIBLE);
+                                if(sk.getProgress()<9) {
+                                    int a = sk.getProgress() + 1;
+                                    sk.setProgress(a);
+                                    skliangdu = a ;
+                                    setAppScreenBrightness((255/7)*a);
+                                    allowModifySettings();
+                                }
+                            }
+                            if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                btn_pos.performClick(); //点击确定
+                            }
+                            Log.i("按键输入", "onKey: " + keyCode);
+                            return false;
+                        }
+                    });
+                    builder1.show();
                     break;
                 case 2:
                     AlertDialog.Builder builder2 = new AlertDialog.Builder(SimpleActivity.this);
@@ -1293,8 +1506,17 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         EditText cankaodianweidudu = (EditText) view.findViewById(R.id.cankaoweidudu);
                         EditText cankaodianweidufen = (EditText) view.findViewById(R.id.cankaoweidufen);
                         EditText xindaohao = (EditText) view.findViewById(R.id.xindaohao7);
+
+
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,false);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                             if (jingduduzengliang.getText().toString().length() > 5) {
                                 ToastUtil.show(SimpleActivity.this, "输入错误");
                             } else {
@@ -1336,6 +1558,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                     kind_of_hujiao.setText("呼叫种类：海呼");
                                     hujiao_number.setVisibility(View.VISIBLE);
                                     hujiao_number.setText("参考点："+ cankaojing1 + "°" + cankaojing2 + "'"+"  " + cankaowei1 + "°" + cankaowei2 + "'");
+                                    haihuhujiao = (TextView) view.findViewById(R.id.haihuhujiao);
+                                    haihuhujiaojd = (TextView)view.findViewById(R.id.jindu);
+                                    haihuhujiaowd = (TextView)view.findViewById(R.id.weidu);
+                                    haihuhujiao.setText("正在呼叫......");
+                                    hujiaomap.put("haihuhujiao",haihuhujiao);
                                     String data = GetSendData(CheckData, CheckSum);
                                     sendData(data);
 
@@ -1345,12 +1572,36 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,true);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                             ToastUtil.show(SimpleActivity.this, "取消海呼");
+                            if (running) {
+                                running = false;
+                                seconds = 0;
+                                pttanjian.setText(" ");
+                                Toast.makeText(SimpleActivity.this, "通话挂断", Toast.LENGTH_LONG).show();
+                            }
+                            kind_of_hujiao.setText("呼叫种类：无");
+                            hujiao_number.setVisibility(View.GONE);
+                            textView_ComStatus.setText("呼叫状态：无呼叫");
+                            qiujiuflag = false;
+                            String CheckData = "01B3000325";
+                            String CheckSum = GetCheckSum(CheckData);
+                            String data = GetSendData(CheckData, CheckSum);
+                            sendData(data);
                         }
                     });
                     Dialog dialog1 = builder.create();
                     dialog1.show();
                     WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
+                    params.gravity=Gravity.BOTTOM|Gravity.RIGHT;
+                    params.x = 50;
+                    params.y = 50;
                     params.width = 400;
                     params.height = 500;
                     dialog1.getWindow().setAttributes(params);
@@ -1365,10 +1616,12 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     AlertDialog.Builder builder218 = new AlertDialog.Builder(SimpleActivity.this);
                     builder218.setIcon(R.drawable.ic_launcher_foreground);
                     builder218.setTitle("音量");
-                    View view218 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_send_qunhu, null);
-                    EditText yinliang= view218.findViewById(R.id.qunhuhao);
+                    View view218 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.activity_yinliang, null);
+                    EditText yinliang= view218.findViewById(R.id.yinliang);
                     yinliang.setHint("设置音量大小(0-9)");
                     builder218.setView(view218);
+                    SeekBar sk = view218.findViewById(R.id.seek_bar);
+                    sk.setProgress(skbuf);
 
                     builder218.setPositiveButton("确定", new DialogInterface.OnClickListener()
                     {
@@ -1376,6 +1629,16 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         public void onClick(DialogInterface dialog, int which)
                         {
                             String a = yinliang.getText().toString().trim();
+                            if(a.length()==0)
+                            {
+                                a=Integer.toString(sk.getProgress());
+                                String checkString="01B300043E"+"0"+a;
+                                String checksumString= GetCheckSum(checkString);
+                                String send_yinliang= GetSendData(checkString,checksumString);
+                                sendData(send_yinliang);
+                                ToastUtil.show(SimpleActivity.this,"音量设置为:"+a);
+                                return;
+                            }
                             int b=Integer.parseInt(a);
                             if(b>9||b<0){
                                 ToastUtil.show(SimpleActivity.this,"音量设置错误,请重新设置！");
@@ -1384,6 +1647,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                 String checksumString= GetCheckSum(checkString);
                                 String send_yinliang= GetSendData(checkString,checksumString);
                                 sendData(send_yinliang);
+                                skbuf = b;
                                 ToastUtil.show(SimpleActivity.this,"音量设置为:"+a);
                             }
                         }
@@ -1435,8 +1699,30 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                 Log.i("按键输入", "dispatchKeyEvent: 输入9");
                             }
                             if (keyCode == 141 && event.getAction() == KeyEvent.ACTION_UP) {
-                                sendKeyCode(7);
-                                Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                                sk.setVisibility(View.VISIBLE);
+                                if(sk.getProgress()>0) {
+                                    int a = sk.getProgress() - 1;
+                                    skbuf = a;
+                                    String s = Integer.toString(a);
+                                    sk.setProgress(a);
+                                    String checkString="01B300043E"+"0"+s;
+                                    String checksumString= GetCheckSum(checkString);
+                                    String send_yinliang= GetSendData(checkString,checksumString);
+                                    sendData(send_yinliang);
+                                }
+                            }
+                            if (keyCode == 131 && event.getAction() == KeyEvent.ACTION_UP) {
+                                sk.setVisibility(View.VISIBLE);
+                                if(sk.getProgress()<9) {
+                                    int a = sk.getProgress() + 1;
+                                    skbuf = a;
+                                    String s = Integer.toString(a);
+                                    sk.setProgress(a);
+                                    String checkString = "01B300043E" + "0" + s;
+                                    String checksumString = GetCheckSum(checkString);
+                                    String send_yinliang = GetSendData(checkString, checksumString);
+                                    sendData(send_yinliang);
+                                }
                             }
                             if (keyCode == 217 && event.getAction() == KeyEvent.ACTION_UP) { //退格按键，对应翻页
                                 sendKeyCode(67);
@@ -1684,6 +1970,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 case 1:
                     Intent intent = new Intent(SimpleActivity.this, ContactsActivity.class);
                     intent.putExtra("count_changlanguage",String.valueOf(changlanguage));
+                    intent.putExtra("caplook",caplook);
                     startActivityForResult(intent, 9);
                     break;
                 case 2:          //发送短信
@@ -1695,6 +1982,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     }
                     Intent intent2 = new Intent(SimpleActivity.this, SendMessageActivity.class);
                     intent2.putExtra("count_changlanguage",String.valueOf(changlanguage));
+                    intent2.putExtra("caplook",caplook);
                     intent2.putExtra("kind","01");
                     startActivityForResult(intent2, 9);
                     // Toast.makeText(SimpleActivity.this, "联系人按键按下", Toast.LENGTH_SHORT).show();
@@ -2218,6 +2506,21 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     data_use = false;
                     data = "";
                     break;
+                case "34":
+                    Map<String, String> map34 = GetGps(data.substring(18, 30),xiangxian,false);
+                    String jd34 = map34.get("jd");
+                    String wd34 = map34.get("wd");
+                    if(hujiaomap.containsKey("xuanhuhujiao"))
+                    {
+                        xuanhuhujiaojd.setText(jd34);
+                        xuanhuhujiaowd.setText(wd34);
+                    }
+                    if(hujiaomap.containsKey("haihuhujiao"))
+                    {
+                        haihuhujiaojd.setText(jd34);
+                        haihuhujiaowd.setText(wd34);
+                    }
+                    break;
                 case "17":  //选呼收
                     AlertDialog.Builder builder17 = new AlertDialog.Builder(SimpleActivity.this);
                     builder17.setIcon(R.drawable.ring_icon);
@@ -2544,11 +2847,16 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     ) {
                         if (sb.equals("xuanhuhujiao")) {
                             xuanhuhujiao.setText("呼叫失败！");
+                            state_vector.add(0);//状态添加，开始计时
+                            timer_cnt[0] = 2;
                             hujiaomap.clear();
                         }
-                        else if(sb.equals("qunhuhujiao"))
+                        else if(sb.equals("haihuhujiao"))
                         {
-
+                            haihuhujiao.setText("呼叫失败");
+                            state_vector.add(1);//状态添加，开始计时
+                            timer_cnt[1] = 2;
+                            hujiaomap.clear();
                         }
                     }
 //                    ToastUtil.showOne(this, "连接失败，请重试！");
@@ -3103,4 +3411,158 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         new TextSwitcherAnimation(tv_switcher5, alist5).create();
 
     } //无需修改，滑动广告
+
+    Handler handler_timer = new Handler()
+    {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what)
+            {
+                case 0:
+                    sendKeyCode(216);
+                    break;
+                default:
+
+                    break;
+            }
+        }
+    };
+
+    private int getScreenBrightness(Context context) {
+        ContentResolver contentResolver = context.getContentResolver();
+        int defVal = 125;
+        return Settings.System.getInt(contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS, defVal);
+    }
+
+    /**
+     * 2.设置 APP界面屏幕亮度值方法
+     * **/
+    private void setAppScreenBrightness(int birghtessValue) {
+        Window window = getWindow();
+        WindowManager.LayoutParams lp = window.getAttributes();
+        lp.screenBrightness = birghtessValue / 255.0f;
+        window.setAttributes(lp);
+    }
+
+    /**
+     * 3.关闭光感，设置手动调节背光模式
+     *
+     * SCREEN_BRIGHTNESS_MODE_AUTOMATIC 自动调节屏幕亮度模式值为1
+     *
+     * SCREEN_BRIGHTNESS_MODE_MANUAL 手动调节屏幕亮度模式值为0
+     * **/
+    public void setScreenManualMode(Context context) {
+        ContentResolver contentResolver = context.getContentResolver();
+        try {
+            int mode = Settings.System.getInt(contentResolver,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE);
+            if (mode == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
+                Settings.System.putInt(contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS_MODE,
+                        Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
+            }
+        } catch (Settings.SettingNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 4.非系统签名应用，引导用户手动授权修改Settings 权限
+     * **/
+    private static final int REQUEST_CODE_WRITE_SETTINGS = 1000;
+
+    private void allowModifySettings() {
+        // Settings.System.canWrite(MainActivity.this)
+        // 检测是否拥有写入系统 Settings 的权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.System.canWrite(SimpleActivity.this)) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this,
+                        android.R.style.Theme_Material_Light_Dialog_Alert);
+                builder.setTitle("请开启修改屏幕亮度权限");
+                builder.setMessage("请点击允许开启");
+                // 拒绝, 无法修改
+                builder.setNegativeButton("拒绝",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Toast.makeText(SimpleActivity.this,
+                                                "您已拒绝修系统Setting的屏幕亮度权限", Toast.LENGTH_SHORT)
+                                        .show();
+                            }
+                        });
+                builder.setPositiveButton("去开启",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                // 打开允许修改Setting 权限的界面
+                                Intent intent = new Intent(
+                                        Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri
+                                        .parse("package:"
+                                                + getPackageName()));
+                                startActivityForResult(intent,
+                                        REQUEST_CODE_WRITE_SETTINGS);
+                            }
+                        });
+                builder.setCancelable(false);
+                builder.show();
+            }
+        }
+    }
+
+
+    /**
+     * 5.修改Setting 中屏幕亮度值
+     *
+     * 修改Setting的值需要动态申请权限 <uses-permission
+     * android:name="android.permission.WRITE_SETTINGS"/>
+     * **/
+    private void ModifySettingsScreenBrightness(Context context,
+                                                int birghtessValue) {
+        // 首先需要设置为手动调节屏幕亮度模式
+        setScreenManualMode(context);
+
+        ContentResolver contentResolver = context.getContentResolver();
+        Settings.System.putInt(contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS, birghtessValue);
+    }
+
+    public class Mythread implements Runnable{
+        @Override
+        public void run() {
+            while (true)
+            {
+                Message message = new Message();
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                synchronized (state_vector)
+                {
+                    if(state_vector.contains(0))
+                    {
+                        if(timer_cnt[0]==0)
+                        {
+                            message.what = 0;
+                            handler_timer.sendMessage(message);
+                        }
+                        timer_cnt[0] = timer_cnt[0]-1;
+                    }
+                    if(state_vector.contains(1))
+                    {
+                        if(timer_cnt[1]==0)
+                        {
+                            message.what = 1;
+                            handler_timer.sendMessage(message);
+                        }
+                        timer_cnt[1] = timer_cnt[1]-1;
+                    }
+                }
+            }
+        }
+    }
+
 }
+
+

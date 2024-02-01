@@ -68,13 +68,47 @@
         android:orientation="vertical"
         android:layout_weight="1">
         <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
             android:id="@+id/add"
-            android:layout_marginTop="35dp"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:textSize="20sp"
-            android:text="添加"
-            android:onClick="add" />
+            android:layout_marginRight="20dp"
+            android:layout_marginTop="30dp"
+            android:textSize="20dp"
+            android:onClick="add"
+            android:text="添加"/>
+        <Button
+            android:layout_marginTop="40dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="编辑"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="删除"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="选呼"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
+            android:textSize="20dp"
+            android:text="短信"/>
 
     </LinearLayout>
 

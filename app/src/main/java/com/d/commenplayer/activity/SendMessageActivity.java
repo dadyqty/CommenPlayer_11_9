@@ -1,18 +1,36 @@
 package com.d.commenplayer.activity;
 
 
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Instrumentation;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.inputmethodservice.InputMethodService;
+import android.media.audiofx.EnvironmentalReverb;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
+import android.provider.Settings;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.InputMethodSubtype;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,11 +39,13 @@ import com.d.commenplayer.comn.Device;
 import com.d.commenplayer.comn.message.IMessage;
 import com.d.commenplayer.comn.message.SerialPortManager;
 import com.d.commenplayer.util.ToastUtil;
+
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 
@@ -35,7 +55,13 @@ public class SendMessageActivity extends AppCompatActivity {
     private long predowmTime =0;
     private int count_downtime=0;
     private int count_changlanguage;
+
+    private int send_state = 0;
     private boolean flag_number = false;
+
+    private boolean lianxiren = false;
+
+    private boolean caplook = false;
     private MyHandle myHandle = new MyHandle(this);
     private TextView languagee;
     private boolean[] isdelay = new boolean[14];
@@ -49,17 +75,40 @@ public class SendMessageActivity extends AppCompatActivity {
     private boolean mOpened = false;
     private Device mDevice;
 
+    private boolean fuhao_flag = false;
+
     private EditText address;
-    private EditText shortmessage;
+    private CustomEditText shortmessage;
+
+    private EditText shoujianren;
+
+    private CustomEditText xinxineirong;
+
+    private Button danfa;
+
+    private Button qunfa;
+
+    private Button duofa;
+
+    private Button shoujianxiang;
+
+    private Button fajianxiang;
 
     private String name = null;
     private String number = null;
 
     int i = 0;
     private String SendData;
+
+    private String address_string;
+
+    private String shortmessage_string;
+
+    private String lianxirenzhongduan;
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if(address.isSelected()){
+        if((address.isSelected()&&!xinxineirong.isSelected())){
             if (event.getKeyCode() == KeyEvent.KEYCODE_F11&& event.getAction() == KeyEvent.ACTION_UP)       //数字0键 KeyCode() == 141, KEYCODE_F11 = 141
             {
                 sendKeyCode(7);//对应数字0
@@ -105,9 +154,17 @@ public class SendMessageActivity extends AppCompatActivity {
                 sendKeyCode(16);//对应数字9
             }
         }
-        if(shortmessage.isSelected()) {
+        if(shortmessage.isSelected()||xinxineirong.isSelected()) {
             if (event.getKeyCode() == 278 && event.getAction() == KeyEvent.ACTION_UP)  //输入法键 KeyCode() == 278, 切换输入法
             {
+                if(count_changlanguage==1)
+                {
+                    languagee_temp = "中文";
+                }
+                else if(count_changlanguage==0)
+                {
+                    languagee_temp = "英文";
+                }
                 Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
                 Message message = new Message();
                 message.what = 13;
@@ -117,31 +174,31 @@ public class SendMessageActivity extends AppCompatActivity {
             }
             if (event.getKeyCode() == KeyEvent.KEYCODE_F12&& event.getAction() == KeyEvent.ACTION_UP)       //数字1键 KeyCode() == 142, KEYCODE_F12 = 142
             {
-                Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
-                if (last_keydown != event.getKeyCode() && last_keydown != 0) {
-                    isdelay[last_messagecode] = false;
-                    issend = true;
-                    isdelay[12] = true;
-                    predowmTime = event.getDownTime();
-                    Message message = new Message();
-                    message.what = 12;
-                    myHandle.sendMessage(message);
-                }
-                if (event.getDownTime() - predowmTime <= 400 || predowmTime==0){
-                    predowmTime = event.getDownTime();
-                    if(last_keydown == event.getKeyCode() || last_keydown==0)
-                        countarray[12]++;
-                    Log.i("识别", "dispatchKeyEvent: "+(event.getEventTime()-predowmTime)+"计数"
-                            +countarray[12]);
-                } else if(!issend){
-                    predowmTime = event.getDownTime();
-                    Message message = new Message();
-                    message.what = 12;
-                    myHandle.sendMessage(message);
-                    isdelay[12] = true;
-                }
-                last_keydown = event.getKeyCode();
-                last_messagecode = 12;
+                Message message = new Message();
+                message.what = 12;
+                myHandle.sendMessage(message);
+//                Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
+//                if (last_keydown != event.getKeyCode() && last_keydown != 0) {
+//                    isdelay[last_messagecode] = false;
+//                    issend = true;
+//                    isdelay[12] = true;
+//                    predowmTime = event.getDownTime();
+//                }
+//                if (event.getDownTime() - predowmTime <= 400 || predowmTime==0){
+//                    predowmTime = event.getDownTime();
+//                    if(last_keydown == event.getKeyCode() || last_keydown==0)
+//                        countarray[12]++;
+//                    Log.i("识别", "dispatchKeyEvent: "+(event.getEventTime()-predowmTime)+"计数"
+//                            +countarray[12]);
+//                } else if(!issend){
+//                    predowmTime = event.getDownTime();
+//                    Message message = new Message();
+//                    message.what = 12;
+//                    myHandle.sendMessage(message);
+//                    isdelay[12] = true;
+//                }
+//                last_keydown = event.getKeyCode();
+//                last_messagecode = 12;
             }
             if (event.getKeyCode() == KeyEvent.KEYCODE_F2 && event.getAction() == KeyEvent.ACTION_UP)       //数字2键 KeyCode() == 132, KEYCODE_F2 = 132
             {
@@ -435,43 +492,851 @@ public class SendMessageActivity extends AppCompatActivity {
             int resultCode=3;
             //准备一个带额外数据的intent对象
             Intent data=new Intent();
+            if(languagee_temp.equals("英文"))
+                count_changlanguage = 1;
+            if(languagee_temp.equals("中文"))
+                count_changlanguage = 2;
             String result=String.valueOf(count_changlanguage);
             data.putExtra("RESULT",result);
             //设置结果
             setResult(resultCode,data);
             finish();
-            ToastUtile.showText(SendMessageActivity.this, "返回主界面");
+//            ToastUtile.showText(SendMessageActivity.this, "返回主界面");
            // Toast.makeText(SendMessageActivity.this, "返回主界面", Toast.LENGTH_SHORT).show();
         }
         if (event.getKeyCode() == 215&& event.getAction() == KeyEvent.ACTION_UP)       //确定键  KeyCode() == 215, 表示发送短信
         {
+//            shortmessage.clearFocus();
+        }
+        if (event.getKeyCode() == 45&& event.getAction() == KeyEvent.ACTION_UP)       //确定键  KeyCode() == 215, 表示发送短信
+        {
+            Button f1 = findViewById(R.id.duanxindanfa);
+            Button f2 = findViewById(R.id.duanxinqunfa);
+            Button f3 = findViewById(R.id.duanxinduofa);
+            Button f4 = findViewById(R.id.duanxinshoujianxiang);
+            Button f5 = findViewById(R.id.duanxinfajianxiang);
+            Button f6 = findViewById(R.id.duanxinf6);
+            Button f7 = findViewById(R.id.duanxinf7);
+            Button f8 = findViewById(R.id.duanxinf8);
+            f6.setVisibility(View.VISIBLE);
+            f7.setVisibility(View.VISIBLE);
+            f8.setVisibility(View.VISIBLE);
+            f1.setText("发送");
+            f2.setText("退出");
+            f3.setText("");
+            f4.setText("中文");
+            f5.setText("数字");
+            f6.setText("大写");
+            f7.setText("小写");
+            f8.setText("符号");
+            AlertDialog.Builder builder = new AlertDialog.Builder(SendMessageActivity.this);
+            View view = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_danfaduanxin,null);
+            builder.setView(view);
+            shoujianren = view.findViewById(R.id.shoujianren);
+            xinxineirong = view.findViewById(R.id.duanxinneirong);
+            shoujianren.setText(address.getText());
+            xinxineirong.setText(shortmessage.getText());
             Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
-            String gbk;
-            String zhongduan= address.getText().toString();
-            if(zhongduan.length()<9){
-                ToastUtile.showText(this, "终端号输入错误！信息发送失败！");
-            }else {
-                ToastUtile.showText(this, "正在发送中。。。");
-                gbk = stringToUnicode(shortmessage.getText().toString());
-                int len=gbk.length()/2+1;
-                String msglen=Integer.toHexString(len).toUpperCase();
-                String Length=Integer.toHexString(len+10).toUpperCase();
-                while (Length.length()<4){
-                    Length="0".concat(Length);
+            xinxineirong.is_inside = true;
+            shoujianren.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    shoujianren.setSelected(hasFocus);
+                    if (count_changlanguage == 1) {
+                        languagee_temp = "英文";
+                    } else if (count_changlanguage == 2) {
+                        languagee_temp = "中文";
+                    }
+                    languagee.setText("数字");
+                    flag_number=true;
+                    count_changlanguage = 0;
                 }
-                while (msglen.length()<4){
-                    msglen="0".concat(msglen);
+            });//为EditText添加获得焦点时的事件
+
+            xinxineirong.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    xinxineirong.setSelected(hasFocus);
+                    if(count_changlanguage==1){
+                        languagee.setText("英文");
+                        languagee_temp="英文";
+                    }else if(count_changlanguage==2){
+                        languagee.setText("中文");
+                        languagee_temp="中文";
+                    }
+                    else {
+                        languagee.setText(languagee_temp);
+                        if(languagee_temp.equals("英文"))
+                            count_changlanguage = 1;
+                        else if(languagee_temp.equals("中文"))
+                            count_changlanguage = 2;
+
+                        flag_number=false;
+                    }
                 }
-                String CheckData="01B3"+Length+"2F"+"0"+zhongduan+msglen+kind+gbk;
-                Log.i("TAG", "CheckData:"+CheckData);
-                String CheckSum=GetCheckSum(CheckData);
-                SendData=GetSendData(CheckData,CheckSum);
-                Log.e("TAG", "SendData:"+SendData);
-                sendData(SendData);
-            }
+            });//为EditText添加获得焦点时的事件
+
+//            xinxineirong.setOnKeyListener(new View.OnKeyListener() {
+//                @Override
+//                public boolean onKey(View v, int keyCode, KeyEvent event) {
+//                    if(keyCode == 45) {
+//
+//                    }
+//                }
+//            });
+
+            builder.setPositiveButton("确认",new DialogInterface.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            f6.setVisibility(View.INVISIBLE);
+                            f7.setVisibility(View.INVISIBLE);
+                            f8.setVisibility(View.INVISIBLE);
+                            f1.setText("单发");
+                            f2.setText("群发");
+                            f3.setText("多发");
+                            f4.setText("收件箱");
+                            f5.setText("发件箱");
+                            if(caplook)
+                            {
+                                Message message = new Message();
+                                message.what = 14;
+                                myHandle.sendMessage(message);
+                                caplook = false;
+                            }
+                            xinxineirong.clearFocus();
+                            fuhao_flag = false;
+                        }
+                    }
+
+                    );
+            builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    f6.setVisibility(View.INVISIBLE);
+                    f7.setVisibility(View.INVISIBLE);
+                    f8.setVisibility(View.INVISIBLE);
+                    f1.setText("单发");
+                    f2.setText("群发");
+                    f3.setText("多发");
+                    f4.setText("收件箱");
+                    f5.setText("发件箱");
+                    if(caplook)
+                    {
+                        Message message = new Message();
+                        message.what = 14;
+                        myHandle.sendMessage(message);
+                        caplook = false;
+                    }
+                    xinxineirong.clearFocus();
+                    fuhao_flag = false;
+                }
+            });
+            builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+
+
+                @SuppressLint("SuspiciousIndentation")
+                @Override
+                public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+
+                    if (keyCode == 45 && event.getAction() == KeyEvent.ACTION_UP ){
+                        String gbk;
+                        String zhongduan= shoujianren.getText().toString();
+                        if(zhongduan.length()!=9){
+                            ToastUtile.showText(SendMessageActivity.this, "终端号输入错误！信息发送失败！");
+                        }else {
+                            send_state = 0;
+                            gbk = stringToUnicode(xinxineirong.getText().toString());
+                            int len=gbk.length()/2+1;
+                            String msglen=Integer.toHexString(len).toUpperCase();
+                            String Length=Integer.toHexString(len+10).toUpperCase();
+                            while (Length.length()<4){
+                                Length="0".concat(Length);
+                            }
+                            while (msglen.length()<4){
+                                msglen="0".concat(msglen);
+                            }
+                            String CheckData="01B3"+Length+"2F"+"0"+zhongduan+msglen+kind+gbk;
+                            Log.i("TAG", "CheckData:"+CheckData);
+                            String CheckSum=GetCheckSum(CheckData);
+                            SendData=GetSendData(CheckData,CheckSum);
+                            Log.e("TAG", "SendData:"+SendData);
+                            sendData(SendData);
+                            address_string = shoujianren.getText().toString();
+                            shortmessage_string = xinxineirong.getText().toString();
+                        }
+                        Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                        btn_pos.performClick(); //点击确定
+                    }
+                    if (keyCode == 142 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"””");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入1");
+                    }
+                    if (keyCode == 132 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"()");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入2");
+                    }
+                    if (keyCode == 133 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"-");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入3");
+                    }
+                    if (keyCode == 134 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"/");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入=4");
+                    }
+                    if (keyCode == 135 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,";");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入5");
+                    }
+                    if (keyCode == 136 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            sendKeyCode(KeyEvent.KEYCODE_SPACE);
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入6");
+                    }
+                    if (keyCode == 137 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"？");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                    }
+                    if (keyCode == 138 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"!");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入8");
+                    }
+                    if (keyCode == 139 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"。");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入9");
+                    }
+                    if (keyCode == 141 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"%");
+                        }
+                        else
+                        dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                    }
+                    if (keyCode == 140 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            sendKeyCode(77);
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                    }
+                    if (keyCode == 131 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"~");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                    }
+                    if (keyCode == 51 && event.getAction() == KeyEvent.ACTION_UP) {
+                        Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                        btn_neg.performClick(); //点击取消
+                    }
+                    if (keyCode == 48 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag = false;
+                        if(caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = false;
+                        }
+                        if(count_changlanguage==1) {
+                            Message message = new Message();
+                            message.what = 13;
+                            myHandle.sendMessage(message);
+                            count_changlanguage++;
+                        }
+                        if(count_changlanguage==0) {
+                            if(languagee_temp.equals("英文")) {
+                                Message message = new Message();
+                                message.what = 13;
+                                myHandle.sendMessage(message);
+                                count_changlanguage = 2;
+                            }
+                            else if(languagee_temp.equals("中文"))
+                            {
+                                flag_number=false;
+                                count_changlanguage =2;
+                            }
+                        }
+                        languagee.setText("中文");
+                    }
+                    if (keyCode == 159 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag = false;
+                        if(caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = false;
+                        }
+                        if(count_changlanguage!=0) {
+                            if(count_changlanguage==1) {
+                                languagee_temp = "英文";
+                            }
+                            else if(count_changlanguage==2)
+                            {
+                                languagee_temp = "中文";
+                            }
+                        }
+                        Message message = new Message();
+                        message.what = 13;
+                        myHandle.sendMessage(message);
+                        count_changlanguage = 3;
+                    }
+                    if (keyCode == 213 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag =false;
+                        if(!caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = true;
+                        }
+                        flag_number = false;
+                        fuhao_flag = false;
+                    }
+                    if (keyCode == 218 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag = false;
+                        if(caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = false;
+                        }
+                        if(count_changlanguage==0) {
+                            if(languagee_temp.equals("中文")) {
+                                Message message = new Message();
+                                message.what = 13;
+                                myHandle.sendMessage(message);
+                                count_changlanguage = 1;
+                            }
+                            else if(languagee_temp.equals("英文"))
+                            {
+                                flag_number=false;
+                                count_changlanguage =1;
+                            }
+                        }
+                        else if(count_changlanguage==2) {
+                            Message message = new Message();
+                            message.what = 13;
+                            myHandle.sendMessage(message);
+                            count_changlanguage = 1;
+                        }
+                        languagee.setText("英文");
+                    }
+                    if (keyCode == 212 && event.getAction() == KeyEvent.ACTION_UP) {
+                        languagee.setText("符号");
+                        fuhao_flag = true;
+                    }
+                    if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                        sendKeyCode(67);
+                    }
+                    if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+
+                    }
+                    Log.i("按键输入", "onKey: " + keyCode);
+                    return false;
+                }
+
+
+
+        });
+            xinxineirong.dialog = builder.show();
+        }
+        if(event.getKeyCode() == 51&& event.getAction() == KeyEvent.ACTION_UP)
+        {
+            Button f1 = findViewById(R.id.duanxindanfa);
+            Button f2 = findViewById(R.id.duanxinqunfa);
+            Button f3 = findViewById(R.id.duanxinduofa);
+            Button f4 = findViewById(R.id.duanxinshoujianxiang);
+            Button f5 = findViewById(R.id.duanxinfajianxiang);
+            Button f6 = findViewById(R.id.duanxinf6);
+            Button f7 = findViewById(R.id.duanxinf7);
+            Button f8 = findViewById(R.id.duanxinf8);
+            f6.setVisibility(View.VISIBLE);
+            f7.setVisibility(View.VISIBLE);
+            f8.setVisibility(View.VISIBLE);
+            f1.setText("发送");
+            f2.setText("退出");
+            f3.setText("");
+            f4.setText("中文");
+            f5.setText("数字");
+            f6.setText("大写");
+            f7.setText("小写");
+            f8.setText("符号");
+            AlertDialog.Builder builder = new AlertDialog.Builder(SendMessageActivity.this);
+            View view = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_danfaduanxin,null);
+            builder.setView(view);
+            TextView textView = view.findViewById(R.id.duanxintitle);
+            textView.setText("发送信息：群发");
+            TextView textView1 = view.findViewById(R.id.shoujianrentitle);
+            textView1.setText("群号：");
+            shoujianren = view.findViewById(R.id.shoujianren);
+            xinxineirong = view.findViewById(R.id.duanxinneirong);
+            shoujianren.setText(address.getText());
+            xinxineirong.setText(shortmessage.getText());
+            Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
+            xinxineirong.is_inside = true;
+            shoujianren.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    shoujianren.setSelected(hasFocus);
+                    if (count_changlanguage == 1) {
+                        languagee_temp = "英文";
+                    } else if (count_changlanguage == 2) {
+                        languagee_temp = "中文";
+                    }
+                    languagee.setText("数字");
+                    flag_number=true;
+                    count_changlanguage = 0;
+                }
+            });//为EditText添加获得焦点时的事件
+
+            xinxineirong.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    xinxineirong.setSelected(hasFocus);
+                    if(count_changlanguage==1){
+                        languagee.setText("英文");
+                        languagee_temp="英文";
+                    }else if(count_changlanguage==2){
+                        languagee.setText("中文");
+                        languagee_temp="中文";
+                    }
+                    else {
+                        languagee.setText(languagee_temp);
+                        if(languagee_temp.equals("英文"))
+                            count_changlanguage = 1;
+                        else if(languagee_temp.equals("中文"))
+                            count_changlanguage = 2;
+
+                        flag_number=false;
+                    }
+                }
+            });//为EditText添加获得焦点时的事件
+
+//            xinxineirong.setOnKeyListener(new View.OnKeyListener() {
+//                @Override
+//                public boolean onKey(View v, int keyCode, KeyEvent event) {
+//                    if(keyCode == 45) {
+//
+//                    }
+//                }
+//            });
+
+            builder.setPositiveButton("确认",new DialogInterface.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            f6.setVisibility(View.INVISIBLE);
+                            f7.setVisibility(View.INVISIBLE);
+                            f8.setVisibility(View.INVISIBLE);
+                            f1.setText("单发");
+                            f2.setText("群发");
+                            f3.setText("多发");
+                            f4.setText("收件箱");
+                            f5.setText("发件箱");
+                            if(caplook)
+                            {
+                                Message message = new Message();
+                                message.what = 14;
+                                myHandle.sendMessage(message);
+                                caplook = false;
+                            }
+                            xinxineirong.clearFocus();
+                        }
+                    }
+
+            );
+            builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    f6.setVisibility(View.INVISIBLE);
+                    f7.setVisibility(View.INVISIBLE);
+                    f8.setVisibility(View.INVISIBLE);
+                    f1.setText("单发");
+                    f2.setText("群发");
+                    f3.setText("多发");
+                    f4.setText("收件箱");
+                    f5.setText("发件箱");
+                    if(caplook)
+                    {
+                        Message message = new Message();
+                        message.what = 14;
+                        myHandle.sendMessage(message);
+                        caplook = false;
+                    }
+                    xinxineirong.clearFocus();
+                }
+            });
+            builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+
+
+                @Override
+                public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+
+                    if (keyCode == 45 && event.getAction() == KeyEvent.ACTION_UP ){
+                        String gbk;
+                        String zhongduan= shoujianren.getText().toString();
+                        if(zhongduan.length()!=9){
+                            ToastUtile.showText(SendMessageActivity.this, "终端号输入错误！信息发送失败！");
+                        }else {
+                            send_state = 0;
+                            gbk = stringToUnicode(xinxineirong.getText().toString());
+                            int len=gbk.length()/2+1;
+                            String msglen=Integer.toHexString(len).toUpperCase();
+                            String Length=Integer.toHexString(len+10).toUpperCase();
+                            while (Length.length()<4){
+                                Length="0".concat(Length);
+                            }
+                            while (msglen.length()<4){
+                                msglen="0".concat(msglen);
+                            }
+                            String CheckData="01B3"+Length+"2F"+"0"+zhongduan+msglen+kind+gbk;
+                            Log.i("TAG", "CheckData:"+CheckData);
+                            String CheckSum=GetCheckSum(CheckData);
+                            SendData=GetSendData(CheckData,CheckSum);
+                            Log.e("TAG", "SendData:"+SendData);
+                            sendData(SendData);
+                            address_string = shoujianren.getText().toString();
+                            shortmessage_string = xinxineirong.getText().toString();
+                        }
+                        Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                        btn_pos.performClick(); //点击确定
+                    }
+                    if (keyCode == 142 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"””");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入1");
+                    }
+                    if (keyCode == 132 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"()");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入2");
+                    }
+                    if (keyCode == 133 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"-");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入3");
+                    }
+                    if (keyCode == 134 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"/");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入=4");
+                    }
+                    if (keyCode == 135 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,";");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入5");
+                    }
+                    if (keyCode == 136 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            sendKeyCode(KeyEvent.KEYCODE_SPACE);
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入6");
+                    }
+                    if (keyCode == 137 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"？");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                    }
+                    if (keyCode == 138 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"!");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入8");
+                    }
+                    if (keyCode == 139 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"。");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入9");
+                    }
+                    if (keyCode == 141 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"%");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                    }
+                    if (keyCode == 140 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            sendKeyCode(77);
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                    }
+                    if (keyCode == 131 && event.getAction() == KeyEvent.ACTION_UP) {
+                        if(fuhao_flag)
+                        {
+                            int cur_pos = xinxineirong.getSelectionStart();
+                            Editable editable = xinxineirong.getText();
+                            editable.insert(cur_pos,"~");
+                        }
+                        else
+                            dispatchKeyEvent(event);
+                        Log.i("按键输入", "dispatchKeyEvent: 输入0");
+                    }
+                    if (keyCode == 51 && event.getAction() == KeyEvent.ACTION_UP) {
+                        Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                        btn_neg.performClick(); //点击取消
+                    }
+                    if (keyCode == 48 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag = false;
+                        if(caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = false;
+                        }
+                        if(count_changlanguage==1) {
+                            Message message = new Message();
+                            message.what = 13;
+                            myHandle.sendMessage(message);
+                            count_changlanguage++;
+                        }
+                        if(count_changlanguage==0) {
+                            if(languagee_temp.equals("英文")) {
+                                Message message = new Message();
+                                message.what = 13;
+                                myHandle.sendMessage(message);
+                                count_changlanguage = 2;
+                            }
+                            else if(languagee_temp.equals("中文"))
+                            {
+                                flag_number=false;
+                                count_changlanguage =2;
+                            }
+                        }
+                        languagee.setText("中文");
+                    }
+                    if (keyCode == 159 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag = false;
+                        if(caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = false;
+                        }
+                        if(count_changlanguage!=0) {
+                            if(count_changlanguage==1) {
+                                languagee_temp = "英文";
+                            }
+                            else if(count_changlanguage==2)
+                            {
+                                languagee_temp = "中文";
+                            }
+                        }
+                        Message message = new Message();
+                        message.what = 13;
+                        myHandle.sendMessage(message);
+                        count_changlanguage = 3;
+                    }
+                    if (keyCode == 213 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag =false;
+                        if(!caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = true;
+                        }
+                        flag_number = false;
+                        fuhao_flag = false;
+                    }
+                    if (keyCode == 218 && event.getAction() == KeyEvent.ACTION_UP) {
+                        fuhao_flag = false;
+                        if(caplook)
+                        {
+                            Message message = new Message();
+                            message.what = 14;
+                            myHandle.sendMessage(message);
+                            caplook = false;
+                        }
+                        if(count_changlanguage==0) {
+                            if(languagee_temp.equals("中文")) {
+                                Message message = new Message();
+                                message.what = 13;
+                                myHandle.sendMessage(message);
+                                count_changlanguage = 1;
+                            }
+                            else if(languagee_temp.equals("英文"))
+                            {
+                                flag_number=false;
+                                count_changlanguage =1;
+                            }
+                        }
+                        else if(count_changlanguage==2) {
+                            Message message = new Message();
+                            message.what = 13;
+                            myHandle.sendMessage(message);
+                            count_changlanguage = 1;
+                        }
+                        languagee.setText("英文");
+                    }
+                    if (keyCode == 212 && event.getAction() == KeyEvent.ACTION_UP) {
+                        languagee.setText("符号");
+                        fuhao_flag = true;
+                    }
+                    if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                        sendKeyCode(67);
+                    }
+                    if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+
+                    }
+                    Log.i("按键输入", "onKey: " + keyCode);
+                    return false;
+                }
+
+
+
+            });
+            xinxineirong.dialog = builder.show();
+        }
+        if(event.getKeyCode() == 48&& event.getAction() == KeyEvent.ACTION_UP)
+        {
+            Intent intent46 = new Intent(SendMessageActivity.this, MsgBox.class);
+            intent46.putExtra("count_changlanguage",String.valueOf(count_changlanguage));
+            intent46.putExtra("select_tablelayout",0);
+            startActivityForResult(intent46, 9);
+        }
+        if(event.getKeyCode() == 159&& event.getAction() == KeyEvent.ACTION_UP)
+        {
+            Intent intent46 = new Intent(SendMessageActivity.this, MsgBox.class);
+            intent46.putExtra("count_changlanguage",String.valueOf(count_changlanguage));
+            intent46.putExtra("select_tablelayout",1);
+            startActivityForResult(intent46, 9);
         }
         return super.dispatchKeyEvent(event);
     }
+
+
     /**
      * 计算两次按键事件的时间差
      *
@@ -702,9 +1567,11 @@ public class SendMessageActivity extends AppCompatActivity {
                                             Log.i("转译按键键值", "KeyCode:"+32);
                                             break;
                                         case 1:sendKeyCode(45);
+                                            CustomEditText.no_ignore = false;
                                             Log.i("转译按键键值", "KeyCode:"+33);
                                             break;
                                         case 2:sendKeyCode(46);
+                                            CustomEditText.no_ignore = false;
                                             Log.i("转译按键键值", "KeyCode:"+34);
                                             break;
                                         case 3:sendKeyCode(47);
@@ -733,6 +1600,7 @@ public class SendMessageActivity extends AppCompatActivity {
                                     }
                                     switch (countarray[8]){
                                         case 0:sendKeyCode(48);
+                                            CustomEditText.no_ignore = false;
                                             Log.i("转译按键键值", "KeyCode:"+32);
                                             break;
                                         case 1:sendKeyCode(49);
@@ -764,6 +1632,7 @@ public class SendMessageActivity extends AppCompatActivity {
                                     }
                                     switch (countarray[9]){
                                         case 0:sendKeyCode(51);
+                                            CustomEditText.no_ignore = false;
                                             Log.i("转译按键键值", "KeyCode:"+32);
                                             break;
                                         case 1:sendKeyCode(52);
@@ -866,7 +1735,9 @@ public class SendMessageActivity extends AppCompatActivity {
                                 languagee.setText("数字");
                         }
                         break;
-
+                    case 14:
+                            sendKeyCode(KeyEvent.KEYCODE_CAPS_LOCK);
+                        break;
                 }
             }
         }
@@ -895,15 +1766,46 @@ public class SendMessageActivity extends AppCompatActivity {
         languagee=findViewById(R.id.show_language);
         address = findViewById(R.id.number_address);
         shortmessage = findViewById(R.id.message_short);
+        danfa = findViewById(R.id.duanxindanfa);
+        qunfa = findViewById(R.id.duanxinqunfa);
+        duofa = findViewById(R.id.duanxinduofa);
+        shoujianxiang = findViewById(R.id.duanxinshoujianxiang);
+        fajianxiang = findViewById(R.id.duanxinfajianxiang);
         dao=new MsgRevDao(this);
+        xinxineirong = new CustomEditText(this);
+        shoujianren = new EditText(this);
+
+        Intent intent = getIntent();
+        count_changlanguage= Integer.valueOf(intent.getStringExtra("count_changlanguage"));
+        if(count_changlanguage==1){
+            languagee_temp="英文";
+        }else if(count_changlanguage==2){
+            languagee_temp="中文";
+        }
+        kind=intent.getStringExtra("kind");
+        lianxiren = intent.getBooleanExtra("lxr_enter",false);
+        if(lianxiren)
+        {
+            lianxirenzhongduan = intent.getStringExtra("zhongduanhao");
+            address.setText(lianxirenzhongduan);
+        }
+        languagee.setText("数字");
         address.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 address.setSelected(hasFocus);
+                if (count_changlanguage == 1) {
+                    languagee_temp = "英文";
+                } else if (count_changlanguage == 2) {
+                    languagee_temp = "中文";
+                }
                 languagee.setText("数字");
-                address.setSelection(address.getText().length());
+                flag_number=true;
+                count_changlanguage = 0;
             }
         });//为EditText添加获得焦点时的事件
+
+        shortmessage.activity = SendMessageActivity.this;
 
         shortmessage.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
@@ -912,18 +1814,24 @@ public class SendMessageActivity extends AppCompatActivity {
                 if(count_changlanguage==1){
                     languagee.setText("英文");
                     languagee_temp="英文";
-                }else{
+                }else if(count_changlanguage==2){
                     languagee.setText("中文");
                     languagee_temp="中文";
-                    count_changlanguage=2;
+                }
+                else {
+                    languagee.setText(languagee_temp);
+                    if(languagee_temp.equals("英文"))
+                        count_changlanguage = 1;
+                    else if(languagee_temp.equals("中文"))
+                        count_changlanguage = 2;
+
+                    flag_number=false;
                 }
             }
         });//为EditText添加获得焦点时的事件
 
-        Intent intent = getIntent();
-        count_changlanguage= Integer.valueOf(intent.getStringExtra("count_changlanguage"));
-        kind=intent.getStringExtra("kind");
-        languagee.setText("数字");
+
+
         if(intent.getStringExtra("ZHONGDUANHAO")!=null){
             address.setText(intent.getStringExtra("ZHONGDUANHAO"));
         }
@@ -984,27 +1892,120 @@ public class SendMessageActivity extends AppCompatActivity {
         data = (String) map.get("data");
         data_use = (boolean) map.get("data_use");
         if(data_use){
+            if(send_state==0)//单发短信
+            {
             String cmd = data.substring(16, 18);
             switch (cmd) {
                 case "35":
                     //Toast.makeText(this, "短信发送中。。。", Toast.LENGTH_LONG).show();
-                    ToastUtile.showText(this, "呼叫成功,消息发送中。。。");
+                    AlertDialog.Builder builder = new AlertDialog.Builder(SendMessageActivity.this);
+                    builder.setIcon(R.drawable.email);
+                    builder.setTitle("呼叫成功");
+                    View view = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_tishi, null);
+                    builder.setView(view);
+
+                    Dialog dialog1 = builder.create();
+                    dialog1.show();
+                    WindowManager.LayoutParams params22 = dialog1.getWindow().getAttributes();
+                    params22.width = 400;
+                    params22.height = 200;
+                    dialog1.getWindow().setAttributes(params22);
                     data="";
                     break;
                 case "29":
-                    ToastUtile.showText(this, "网络忙,请稍后重试。。。");
+                    AlertDialog.Builder builder1 = new AlertDialog.Builder(SendMessageActivity.this);
+                    builder1.setIcon(R.drawable.email);
+                    builder1.setTitle("呼叫失败");
+                    View view1 = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_tishi, null);
+                    TextView tv = view1.findViewById(R.id.hujiaochenggong);
+                    tv.setText("网络忙，请稍后重试");
+                    builder1.setView(view1);
+
+                    builder1.setNegativeButton("取消",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                }
+                            });
+                    builder1.setPositiveButton("确定",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                }
+                            });
+                    builder1.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                        @Override
+                        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                            if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                                btn_neg.performClick(); //点击取消
+                            }
+                            if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                btn_pos.performClick(); //点击确定
+                            }
+                            return false;
+                        }}
+                    );
+                    Dialog dialog2 = builder1.create();
+                    dialog2.show();
+                    WindowManager.LayoutParams params23 = dialog2.getWindow().getAttributes();
+                    params23.width = 600;
+                    params23.height = 200;
+                    dialog2.getWindow().setAttributes(params23);
+                    data="";
                     //MsgInfo msginfopre29=new MsgInfo(-1,address.getText().toString(),shortmessage.getText().toString()," "," "," "," ",3);
                     //dao.add(msginfopre29);
                     data="";
                     break;
                 case "2B":
-                    ToastUtile.showText(this, "短信发送失败,稍后自动重传。。。");
-                    if(!send_handler.hasMessages(WHAT_SEND_ERROR)){
-                        send_handler.sendEmptyMessageDelayed(WHAT_SEND_ERROR,3000);
-                    }
-                    MsgInfo msginfopre=new MsgInfo(-1,address.getText().toString(),shortmessage.getText().toString()," "," "," "," ",3,0);
-                    dao.add(msginfopre);
-                    data="";
+                    AlertDialog.Builder builder2 = new AlertDialog.Builder(SendMessageActivity.this);
+                    builder2.setIcon(R.drawable.email);
+                    builder2.setTitle("呼叫失败");
+                    View view2 = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_tishi, null);
+                    TextView tv1 = view2.findViewById(R.id.hujiaochenggong);
+                    tv1.setText("发送失败！");
+                    builder2.setView(view2);
+
+                    builder2.setNegativeButton("取消",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                }
+                            });
+                    builder2.setPositiveButton("确定",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                }
+                            });
+
+                    builder2.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                      @Override
+                      public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                          if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                              Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                              btn_neg.performClick(); //点击取消
+                          }
+                          if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+                              Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                              btn_pos.performClick(); //点击确定
+                          }
+                          return false;
+                      }}
+                    );
+
+
+                    Dialog dialog3 = builder2.create();
+                    dialog3.show();
+                    WindowManager.LayoutParams params24 = dialog3.getWindow().getAttributes();
+                    params24.width = 400;
+                    params24.height = 200;
+                    dialog3.getWindow().setAttributes(params24);
                     break;
                 case "2C":
                     send_success=true;
@@ -1016,6 +2017,10 @@ public class SendMessageActivity extends AppCompatActivity {
                     int resultCode=3;
                     //准备一个带额外数据的intent对象
                     Intent intentback=new Intent();
+                    if(languagee_temp.equals("英文"))
+                        count_changlanguage = 1;
+                    if(languagee_temp.equals("中文"))
+                        count_changlanguage = 2;
                     String result=String.valueOf(count_changlanguage);
                     intentback.putExtra("RESULT",result);
                     //设置结果
@@ -1026,6 +2031,49 @@ public class SendMessageActivity extends AppCompatActivity {
                     break;
                 default:
                     break;
+            }
+        }
+            if(send_state==1)//群发短信
+            {
+                String cmd = data.substring(16, 18);
+                switch (cmd) {
+                    case "35":
+
+                        break;
+                    case "29":
+                        ToastUtile.showText(this, "网络忙,请稍后重试。。。");
+                        //MsgInfo msginfopre29=new MsgInfo(-1,address.getText().toString(),shortmessage.getText().toString()," "," "," "," ",3);
+                        //dao.add(msginfopre29);
+                        data="";
+                        break;
+                    case "2B":
+                        ToastUtile.showText(this, "短信群发失败！");
+                        MsgInfo msginfopre=new MsgInfo(-1,address_string,shortmessage_string," "," "," "," ",3,0);
+                        dao.add(msginfopre);
+                        data="";
+                        break;
+                    case "2C":
+
+                        send_success=true;
+                        send_handler.removeMessages(10);
+                        MsgInfo msgInfo=new MsgInfo(-1,address_string,shortmessage_string," "," "," "," ",2,0);
+                        dao.add(msgInfo);
+                        ToastUtile.showText(this, "短信群发成功！");
+                        //保存一个结果码
+                        int resultCode=3;
+                        //准备一个带额外数据的intent对象
+                        Intent intentback=new Intent();
+                        String result=String.valueOf(count_changlanguage);
+                        intentback.putExtra("RESULT",result);
+                        //设置结果
+                        setResult(resultCode,intentback);
+                        data="";
+                        data_use=false;
+                        finish();
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
