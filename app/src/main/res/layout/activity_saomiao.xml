@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_marginTop="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:textSize="30dp"
+                android:text="当前信道:"
+                android:textColor="@color/black"
+                ></TextView>
+        <TextView
+            android:id="@+id/saomiaoxindaohao"
+            android:text=""
+            android:textSize="30dp"
+            android:textColor="@color/black"
+            android:layout_weight="5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+        <TextView
+            android:layout_marginTop="30dp"
+            android:id="@+id/xindaosaomiao"
+            android:text="扫描中......"
+            android:textSize="50dp"
+            android:textColor="@color/black"
+            android:visibility="invisible"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+
+    </LinearLayout>
+</LinearLayout>

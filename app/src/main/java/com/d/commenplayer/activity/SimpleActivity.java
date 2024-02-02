@@ -110,9 +110,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
     private TextView haihuhujiaowd;
 
+    private TextView saomiao;
+
+    private TextView saomiaoxindao;
+
     private boolean isVideo = false;
     private boolean ignoreNet;
     private boolean webViewisSelected = true;
+    private boolean Scan_flag = false;
     private boolean onReceivedError = false;
     private MsgRevDao dao;
 
@@ -730,8 +735,77 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     dialog1.getWindow().setAttributes(params);
                     break;
                 case 2:
-                    ToastUtil.show(this, "定位呼");
-//                            sendData(sendMingling_nodata(3, "")); //气象发
+                    if(running)
+                    {
+                        Toast.makeText(this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
+                        return false;
+                    }
+                    AlertDialog.Builder bd = new AlertDialog.Builder(SimpleActivity.this);
+                    bd.setIcon(R.drawable.saomiao);
+                    bd.setTitle("扫描");
+                    View view2 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.activity_saomiao, null);
+                    bd.setView(view2);
+                    saomiao = view2.findViewById(R.id.xindaosaomiao);
+                    saomiaoxindao = view2.findViewById(R.id.saomiaoxindaohao);
+                    bd.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                        @Override
+                        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                            if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                                btn_neg.performClick(); //点击取消
+                                sendKeyCode(216);
+                            }
+                            if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                btn_pos.performClick(); //点击确定
+                            }
+                            return false;
+                        }
+                    });
+                    bd.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,false);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                            Scan_flag = true;
+                            saomiao.setVisibility(View.VISIBLE);
+                        }
+                    });
+                    bd.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                Field field = dialog.getClass().getSuperclass().getDeclaredField("mShowing");
+                                field.setAccessible(true);
+                                field.set(dialog,true);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                            String number = xingdaohao.getText().toString().substring(4,7);
+                            int n = Integer.parseInt(number);
+                            number = Integer.toHexString(n).toUpperCase();
+                            while (number.length() < 4) {
+                                number = "0".concat(number);
+                            }
+                            Scan_flag = false;
+                            String CheckData = "01B300059A" + number;
+                            String CheckSum = GetCheckSum(CheckData);
+                            String data = GetSendData(CheckData, CheckSum);
+                            sendData(data);
+                        }
+                    });
+                    Dialog dl = bd.create();
+                    dl.show();
+                    WindowManager.LayoutParams p = dl.getWindow().getAttributes();
+                    p.width = 400;
+                    p.height = 350;
+                    dl.getWindow().setAttributes(p);
                     break;
                 case 3:
                     ToastUtil.show(this, "时间设置");
@@ -2915,6 +2989,16 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     data_use = false;
                     data = "";
                     break;
+                case "74" :
+                    int xindao3 = Integer.parseInt(data.substring(18, 22), 16);
+                    saomiaoxindao.setText(Integer.toString(xindao3));
+                    String stop = data.substring(22,24);
+                    if(stop.equals("01")) {
+                        Scan_flag = false;
+                        xingdaohao.setText(Integer.toString(xindao3));
+                        saomiao.setText("扫描停止");
+                    }
+                    break;
                 default:
                     break;
             }
@@ -2974,7 +3058,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         data = "";
                         Log.e("串口接收", "--校验失败--" + data);
                     }
-                    temp.delete(0, end + 8);  //无论校验成功与否，都要清空缓冲区的数据
+                    temp.delete(0, end+8);  //无论校验成功与否，都要清空缓冲区的数据
                     if (mcmd.equals("26") || mcmd.equals("16")||mcmd.equals("17")||mcmd.equals("14")||mcmd.equals("01")||mcmd.equals("12")||mcmd.equals("19")||mcmd.equals("1B")) {   //根据指令 决定是否 发送应答帧
                         sendData(Answer(data, data_use));  //校验完，发送应答帧(PPT按键除外)
                     }
@@ -3558,6 +3642,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         }
                         timer_cnt[1] = timer_cnt[1]-1;
                     }
+                }
+
+                if(Scan_flag)
+                {
+                    String CheckData = "01B3000373";
+                    String CheckSum = GetCheckSum(CheckData);
+                    String data = GetSendData(CheckData, CheckSum);
+                    sendData(data);
                 }
             }
         }

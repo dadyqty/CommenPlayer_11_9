@@ -5,7 +5,18 @@ public class ContactsInfo {
     private String name;
     private String number;
 
-    public ContactsInfo(int id, String name, String number) {
+    private String pinyin;
+
+    public void setPinyin(String pinyin) {
+        this.pinyin = pinyin;
+    }
+
+    public String getPinyin() {
+        return pinyin;
+    }
+
+    public ContactsInfo(int id, String name, String number, String pinyin) {
+        this.pinyin = pinyin;
         this.id = id;
         this.name = name;
         this.number = number;

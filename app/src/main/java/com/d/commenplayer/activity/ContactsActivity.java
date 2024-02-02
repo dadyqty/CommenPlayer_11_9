@@ -61,6 +61,15 @@ import java.util.TimerTask;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
+import junit.framework.Assert;
+
+import net.sourceforge.pinyin4j.PinyinHelper;
+import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType;
+import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination;
+
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -794,6 +803,7 @@ public class ContactsActivity extends Activity {
                     }
                     contactsInfo.setName(name);
                     contactsInfo.setNumber(number);
+                    contactsInfo.setPinyin(textToHanYuPinyin(name,1,1,1," "));
                     //2).更新数据表对应的数据
                     dao.update(contactsInfo);
                     //3).通知更新列表
@@ -1297,7 +1307,8 @@ public class ContactsActivity extends Activity {
                 //1).保存数据到数据库中
                 String name=et_name.getText().toString();
                 String number=et_number.getText().toString();
-                ContactsInfo contactsInfo=new ContactsInfo(-1,name,number);
+                String pinyin = textToHanYuPinyin(name,2,1,1," ");
+                ContactsInfo contactsInfo=new ContactsInfo(-1,name,number,pinyin);
                 if(number.length()!=9)
                 {
                     ToastUtile.showText(ContactsActivity.this, "终端号输入错误！请重新输入！");
@@ -2183,6 +2194,60 @@ public class ContactsActivity extends Activity {
             default:
                 break;
         }
+    }
+
+
+    /**
+     * 汉字转汉语拼音。这是底层方法，然后提供重载方法，简化参数传递
+     * {@// TODO: 2020/6/4 因为汉语的博大精深，所以对于多音字的处理本方法暂时无法提供有效支持 }
+     * <p>
+     * {@link HanyuPinyinOutputFormat} 汉语拼音输出格式设置
+     * {@link HanyuPinyinCaseType} 设置拼音大小写：UPPERCASE（大写）、LOWERCASE（小写）
+     * {@link HanyuPinyinToneType} 设置拼音音调：WITHOUT_TONE（无音标）、WITH_TONE_MARK（拼音上面带音标）、WITH_TONE_NUMBER（用1-4表示音调）
+     * {@link HanyuPinyinVCharType} 设置特殊音标ü：WITH_V（用 v 表示 ü）、WITH_U_AND_COLON（用 "u:" 表示 ü）、WITH_U_UNICODE（直接用 ü）
+     * 注意：toneType 为 WITH_TONE_MARK 时，charType 必须为 WITH_U_UNICODE，否则异常。
+     *
+     * @param text     ：待转换的源字符串，不能为 null
+     * @param caseType ：拼音大小写，1 表示大写，2 表示小写，3 表示首字母大写
+     * @param toneType ：拼音音调，1 无音调，2 拼音上方加音调，3 用数字表示音调
+     * @param charType ：特殊音标ü显示方式，1 用 v 显示，2 用 ü 表示，3 用 u: 表示
+     * @param spacer   ：拼音与拼音之间的分隔符
+     * @return
+     */
+    public static String textToHanYuPinyin(String text, int caseType, int toneType, int charType, String spacer) {
+        StringBuffer result = new StringBuffer();
+        try {
+            Assert.assertNotNull("待转换文本不能为空！",text);
+            HanyuPinyinCaseType pinyinCaseType = caseType == 1 ? HanyuPinyinCaseType.UPPERCASE : HanyuPinyinCaseType.LOWERCASE;
+            HanyuPinyinToneType pinyinToneType = toneType == 1 ? HanyuPinyinToneType.WITHOUT_TONE : toneType == 2 ? HanyuPinyinToneType.WITH_TONE_MARK : HanyuPinyinToneType.WITH_TONE_NUMBER;
+            HanyuPinyinVCharType pinyinVCharType = charType == 1 ? HanyuPinyinVCharType.WITH_V : charType == 2 ? HanyuPinyinVCharType.WITH_U_UNICODE : HanyuPinyinVCharType.WITH_U_AND_COLON;
+            //toneType 为 WITH_TONE_MARK 时，charType 必须为 WITH_U_UNICODE，否则异常。
+            pinyinVCharType = toneType == 2 ? HanyuPinyinVCharType.WITH_U_UNICODE : pinyinVCharType;
+            char[] textChar = text.trim().toCharArray();
+            HanyuPinyinOutputFormat hanyuPinyinOutputFormat = new HanyuPinyinOutputFormat();
+            hanyuPinyinOutputFormat.setCaseType(pinyinCaseType);
+            hanyuPinyinOutputFormat.setToneType(pinyinToneType);
+            hanyuPinyinOutputFormat.setVCharType(pinyinVCharType);
+            for (int i = 0; i < textChar.length; i++) {
+                // 只为汉字进行拼音转换。
+                if (Character.toString(textChar[i]).matches("[\\u4E00-\\u9FA5]+")) {
+                    /**toHanyuPinyinStringArray
+                     * 获取单个汉字的所有汉语拼音，即对于多音字，如"间"，则返回两个汉语拼音串：jian1、jian4
+                     * 这里暂时只取第一个，实际中这样是存在误差的，多音字很容易取错拼音.
+                     */
+                    String[] pinyinStringArray = PinyinHelper.toHanyuPinyinStringArray(textChar[i], hanyuPinyinOutputFormat);
+                    String fullPinYin = pinyinStringArray[0];
+                    //caseType 表示将首字母大写
+                    fullPinYin = caseType == 3 ? Character.toString(fullPinYin.charAt(0)).toUpperCase() + fullPinYin.substring(1) : fullPinYin;
+                    result.append(fullPinYin).append(spacer);
+                } else {
+                    result.append(textChar[i]);
+                }
+            }
+        } catch (BadHanyuPinyinOutputFormatCombination e) {
+            e.printStackTrace();
+        }
+        return result.toString();
     }
 
 }

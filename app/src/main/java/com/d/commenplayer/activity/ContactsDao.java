@@ -25,6 +25,7 @@ public class ContactsDao {
         ContentValues values = new ContentValues();
         values.put("name",contactsInfo.getName());
         values.put("number", contactsInfo.getNumber());
+        values.put("pinyin",contactsInfo.getPinyin());
         long id = database.insert("contacts_info", null, values);
         Log.e("TAG", "id=" + id);
         //设置id
@@ -55,6 +56,7 @@ public class ContactsDao {
         ContentValues values = new ContentValues();
         values.put("name",contactsInfo.getName());
         values.put("number", contactsInfo.getNumber());
+        values.put("pinyin",contactsInfo.getPinyin());
         int updateCount = database.update("contacts_info", values, "_id=" + contactsInfo.getId(), null);
         Log.e("TAG", "updateCount=" + updateCount);
         //3.关闭
@@ -69,18 +71,22 @@ public class ContactsDao {
         SQLiteDatabase database = dbHelper.getReadableDatabase();
         //2.执行query select * from black number
         //查询根据_id 实现倒序
-        Cursor cursor = database.query("contacts_info", null, null, null, null, null, "name asc");
-        //3.从cursor中取出所有数据并封装到List中
-        while (cursor.moveToNext()){
-            //id
-            int id=cursor.getInt(0);
-            //number
-            String number=cursor.getString(cursor.getColumnIndex("number"));
-            String name=cursor.getString(cursor.getColumnIndex("name"));
-            list.add(new ContactsInfo(id,name,number));
+        if(checkColumnExists(database,"contacts_info","pinyin")) {
+            Cursor cursor = database.query("contacts_info", null, null, null, null, null, "pinyin asc");
+            //3.从cursor中取出所有数据并封装到List中
+            while (cursor.moveToNext()) {
+                //id
+                int id = cursor.getInt(0);
+                //number
+                String number = cursor.getString(cursor.getColumnIndex("number"));
+                String name = cursor.getString(cursor.getColumnIndex("name"));
+                String pinyin = cursor.getString(cursor.getColumnIndex("pinyin"));
+                list.add(new ContactsInfo(id, name, number, pinyin));
+            }
+
+            //3.关闭
+            cursor.close();
         }
-        //3.关闭
-        cursor.close();
         database.close();
         return list;
     }
@@ -113,6 +119,32 @@ public class ContactsDao {
         cursor.close();
         database.close();
         return Name;
+    }
+
+    /**
+     * 方法：检查表中某列是否存在
+     * @param db
+     * @param tableName 表名
+     * @param columnName 列名
+     * @return
+     */
+    private boolean checkColumnExists(SQLiteDatabase db, String tableName, String columnName) {
+        boolean result = false ;
+        Cursor cursor = null ;
+
+        try{
+            cursor = db.rawQuery( "select * from sqlite_master where name = ? and sql like ?"
+                    , new String[]{tableName , "%" + columnName + "%"} );
+            result = null != cursor && cursor.moveToFirst() ;
+        }catch (Exception e){
+            Log.e("TAG","checkColumnExists..." + e.getMessage()) ;
+        }finally{
+            if(null != cursor && !cursor.isClosed()){
+                cursor.close() ;
+            }
+        }
+
+        return result ;
     }
 }
 

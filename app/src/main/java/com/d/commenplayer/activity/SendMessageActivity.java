@@ -1788,6 +1788,7 @@ public class SendMessageActivity extends AppCompatActivity {
         {
             lianxirenzhongduan = intent.getStringExtra("zhongduanhao");
             address.setText(lianxirenzhongduan);
+            sendKeyCode(45);
         }
         languagee.setText("数字");
         address.setOnFocusChangeListener(new View.OnFocusChangeListener() {
