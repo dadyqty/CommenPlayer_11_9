@@ -487,7 +487,7 @@
             android:layout_weight="1"
             android:padding="0dp"
             android:id="@+id/button3"
-            android:text="信箱"
+            android:text="短信"
             android:textSize="30dp"/>
         <Button
             android:layout_width="wrap_content"
@@ -495,7 +495,7 @@
             android:id="@+id/button4"
             android:layout_weight="1"
             android:padding="0dp"
-            android:text="广告"
+            android:text="扫描"
             android:textSize="30dp"/>
         <Button
             android:layout_width="wrap_content"
@@ -503,7 +503,7 @@
             android:layout_weight="1"
             android:padding="0dp"
             android:id="@+id/button5"
-            android:text="电话"
+            android:text="音量"
             android:textSize="30dp"/>
         <Button
             android:layout_width="wrap_content"
@@ -519,7 +519,7 @@
             android:layout_weight="1"
             android:padding="0dp"
             android:id="@+id/button7"
-            android:text="音量"
+            android:text="放大"
             android:textSize="30dp"/>
         <Button
             android:layout_width="wrap_content"
@@ -527,7 +527,7 @@
             android:layout_weight="1"
             android:padding="0dp"
             android:id="@+id/button8"
-            android:text="联系人"
+            android:text="缩小"
             android:textSize="30dp"/>
     </LinearLayout>
 

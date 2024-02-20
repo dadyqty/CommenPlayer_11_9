@@ -187,14 +187,7 @@ public class SendPictureActivity extends AppCompatActivity {
         {
             Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
             sendKeyCode(62);        //表示空格 KEYCODE_SPACE = 62
-            //保存一个结果码
-            int resultCode=3;
             //准备一个带额外数据的intent对象
-            Intent data=new Intent();
-            String result=String.valueOf(count_changlanguage);
-            data.putExtra("RESULT",result);
-            //设置结果
-            setResult(resultCode,data);
             finish();
             ToastUtile.showText(SendPictureActivity.this, "返回主界面");
            // Toast.makeText(SendMessageActivity.this, "返回主界面", Toast.LENGTH_SHORT).show();

@@ -12,7 +12,8 @@ public class CustomEditText extends android.support.v7.widget.AppCompatEditText 
     public SendMessageActivity activity;
     public AlertDialog dialog;
 
-    public static boolean no_ignore = true;
+    public static boolean no_ignore = true;//避免模拟输入法触发
+    public boolean hujiao_flag = false;
 
     public  boolean is_inside = false;
 
@@ -35,6 +36,8 @@ public class CustomEditText extends android.support.v7.widget.AppCompatEditText 
 
     @Override
     public boolean dispatchKeyEventPreIme(KeyEvent event) {
+        if(hujiao_flag)
+            return true;
         if(event.getKeyCode()==45&&event.getAction() == KeyEvent.ACTION_UP&&no_ignore)
         {
             if(is_inside)
