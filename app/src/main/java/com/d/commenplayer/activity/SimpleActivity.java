@@ -10,10 +10,13 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.Ringtone;
@@ -26,6 +29,7 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.RequiresApi;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -42,6 +46,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextSwitcher;
@@ -50,7 +55,9 @@ import android.widget.Toast;
 import android.widget.ViewSwitcher;
 
 import com.d.commenplayer.MainActivity;
+import com.d.commenplayer.MyReceiver;
 import com.d.commenplayer.R;
+import com.d.commenplayer.RadarView;
 import com.d.commenplayer.comn.Device;
 import com.d.commenplayer.comn.message.IMessage;
 import com.d.commenplayer.comn.message.SerialPortManager;
@@ -59,6 +66,7 @@ import com.d.commenplayer.netstate.NetBus;
 import com.d.commenplayer.netstate.NetCompat;
 import com.d.commenplayer.netstate.NetState;
 import com.d.commenplayer.util.Lunar;
+import com.d.commenplayer.util.NavigationBarUtil;
 import com.d.commenplayer.util.ToastUtil;
 import com.d.lib.commenplayer.CommenPlayer;
 import com.d.lib.commenplayer.listener.IPlayerListener;
@@ -74,6 +82,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -83,6 +95,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
@@ -91,6 +105,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private CommenPlayer player; //播放器类
     private WebView webView;
     private ImageView aispower;
+
+    private ImageView duanxinimg;
+
+    private ImageView tupian;
     private ImageView videopower;
     private TextView diantaihao;
     private TextView xingdaohao;
@@ -117,10 +135,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
     private TextView saomiaoxindao;
 
+    private EditText xuanhuxindao;
+
     private boolean isVideo = false;
     private boolean ignoreNet;
     private boolean webViewisSelected = true;
     private boolean Scan_flag = false;
+
+    private boolean xuanhu_flag = false;
 
     private boolean shezhi_flag = false;
     private boolean onReceivedError = false;
@@ -132,7 +154,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private TextSwitcher tv_switcher4;
     private TextSwitcher tv_switcher5;
 
-    private Dialog dialogtemp;
+    private AlertDialog dialogtemp;
     private Button button1; //更换按键显示文本实现翻页的效果
     private Button button2;
     private Button button3;
@@ -161,6 +183,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private TextView dataUpdate; //显示日历
     private String dataupdate;
     private TextView nongli; //显示日历
+
+    private RadarView radarView;
     private String DEFAULT_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss"; //hh 12 HH 24小时
     private Lunar lunar;
     private Device mDevice;
@@ -171,11 +195,15 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private Long diff = 0L;
     private String xiangxian="0";
     private boolean mOpened = false;
+
+    private boolean dark_flag = false;
     private TextView qunhao;
     private int changlanguage=1;
 
     private Boolean caplook = false;
     private boolean screen_flag = true;
+
+    private String cmd_temp ="00";
 
     private ArrayList<String> alist;
     private ArrayList<String> alist2;
@@ -193,11 +221,15 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private int[] timer_cnt ;
 
     public static Bitmap bitmap;
-
+    private Window globle_window;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_simple);
+        globle_window = getWindow();
+        WindowManager.LayoutParams params = globle_window.getAttributes();
+        params.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE;
+        globle_window.setAttributes(params);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         dao=new MsgRevDao(this);
         NetBus.getIns().addListener(this);
@@ -217,7 +249,6 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         timer_cnt = new int[50];
 
         webViewSet();
-
 
 //        String checkString="01B30003F0";
 //        String checksumString= GetCheckSum(checkString);
@@ -293,9 +324,13 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
     private void initTimeView() {
         hangsu = findViewById(R.id.hangsu);
+        hangsu.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
         timeUpdate = findViewById(R.id.shijian);
+        timeUpdate.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
         dataUpdate = findViewById(R.id.rili);
+        dataUpdate.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
         nongli = findViewById(R.id.nongli);
+        nongli.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
         qunhao= findViewById(R.id.qunhao);
         lunar = new Lunar(Calendar.getInstance());
     }
@@ -309,6 +344,25 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         button6 = (Button) findViewById(R.id.button6);
         button7 = (Button) findViewById(R.id.button7);
         button8 = (Button) findViewById(R.id.button8);
+        button1.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button2.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button3.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button4.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button5.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button6.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button7.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+        button8.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/mianfei.ttf"));
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+//            button1.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button2.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button3.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button4.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button5.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button6.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button7.setBackground(getResources().getDrawable(R.drawable.button_2));
+//            button8.setBackground(getResources().getDrawable(R.drawable.button_2));
+//
+//        }
     }
 
     private void runTime() {
@@ -367,9 +421,41 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                              }
                              gps_time = 0L;
                              timeupdate = String.valueOf(system_time);
+                             String hours = timeupdate.substring(6,8);
                              dataUpdate.setText("20" + timeupdate.substring(0, 2) + "-" + timeupdate.substring(2, 4) + "-" + timeupdate.substring(4, 6) + lunar.getWeek());
-                             timeUpdate.setText(timeupdate.substring(6, 8) + ":" + timeupdate.substring(8, 10) + ":" + timeupdate.substring(10, 12));
+                             timeUpdate.setText(hours + ":" + timeupdate.substring(8, 10) + ":" + timeupdate.substring(10, 12));
                              nongli.setText(lunar.cyclical() + lunar.animalsYear() + "年" + lunar.toString());
+                             if(Integer.parseInt(hours)>=18||Integer.parseInt(hours)<6) {
+                                 if (!dark_flag)
+                                 {
+                                     dark_flag = true;
+                                     String js = "javascript:" + "dark()";
+                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                                         webView.evaluateJavascript(js, new ValueCallback<String>() {
+                                             @Override
+                                             public void onReceiveValue(String value) {
+                                                 //此处为 js 返回的结果
+                                             }
+                                         });
+                                     }
+                                }
+                             }
+                             else
+                             {
+                                 if (dark_flag)
+                                 {
+                                     dark_flag = false;
+                                     String js = "javascript:" + "bright()";
+                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                                         webView.evaluateJavascript(js, new ValueCallback<String>() {
+                                             @Override
+                                             public void onReceiveValue(String value) {
+                                                 //此处为 js 返回的结果
+                                             }
+                                         });
+                                     }
+                                 }
+                             }
                          }
                      }
         );
@@ -389,7 +475,17 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     public boolean dispatchKeyEvent(KeyEvent event) {  //按键发送数据
         Log.e("TAG","dispatchKeyEvent:"+event.getKeyCode());
         if (event.getKeyCode() == 62 && event.getAction() == KeyEvent.ACTION_UP) { // 选中海图
+            qiehuan(true);
             haituguizhong();
+            count = 1;
+            button1.setText("选呼");
+            button2.setText("群呼");
+            button3.setText("短信");
+            button4.setText("扫描");
+            button5.setText("音量");
+            button6.setText("亮度");
+            button7.setText("放大");
+            button8.setText("缩小"); //联系人
         }   //翻页功能
         if (event.getKeyCode() == 279 && event.getAction() == KeyEvent.ACTION_UP) { // 海图放大
             fangda();
@@ -403,16 +499,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         if (event.getKeyCode() == 20 && event.getAction() == KeyEvent.ACTION_UP) { // 海图下移
             xiayi();
         }
-        if (event.getKeyCode() == 58 && event.getAction() == KeyEvent.ACTION_UP) { //
-            if(screen_flag) {
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                screen_flag = false;
-            }
-            else {
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                screen_flag = true;
-            }
-
+        if (event.getKeyCode() == 58 && event.getAction() == KeyEvent.ACTION_UP) {
+            String CheckData = "01B3000388";
+            String CheckSum = GetCheckSum(CheckData);
+            String data = GetSendData(CheckData, CheckSum);
+            sendData(data);
         }
         if (event.getKeyCode() == 21 && event.getAction() == KeyEvent.ACTION_UP) { //
             zuoyi();
@@ -478,47 +569,63 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
                 }
             }
-            else
+            else {
                 shijianshezhi();
+                shezhi_flag = false;
+            }
         }    //选呼
         if (event.getKeyCode() == 114 && event.getAction() == KeyEvent.ACTION_UP) {  //求救呼发按键识别
             if (qiujiu()) return false;
         }   //求救呼
         if (event.getKeyCode() == 51 && event.getAction() == KeyEvent.ACTION_UP) {
-            switch (count) {//群呼按键识别
-                case 1:
-                    if (qunhu()) return false;
-                    break;
+            if(!shezhi_flag) {
+                switch (count) {//群呼按键识别
+                    case 1:
+                        if (qunhu()) return false;
+                        break;
 
-                case 2:  //海呼
-                    haihu();
-                    break;
-                case 3:
-                    qiehuan(false);
-                    break;
+                    case 2:  //海呼
+                        haihu();
+                        break;
+                    case 3:
+                        qiehuan(false);
+                        break;
 
-                default:
-                    break;
+                    default:
+                        break;
 
+                }
+            }
+            else
+            {
+                setGPS();
+                shezhi_flag = false;
             }
 
 
         }
         if (event.getKeyCode() == 46 && event.getAction() == KeyEvent.ACTION_UP) {  //短信 全呼
-            switch (count) {
-                case 1:
-                    duanxin();
+            if(!shezhi_flag) {
+                switch (count) {
+                    case 1:
+                        duanxin();
 //                    Intent intent = new Intent(SimpleActivity.this, ContactsActivity.class);
 //                    intent.putExtra("count_changlanguage",String.valueOf(changlanguage));
 //                    startActivityForResult(intent, 9);
-                    break;
-                case 2:
-                    quanhu();
-                    break;
-                case 3 :
-                    ToastUtil.show(this,"收音机");
-                default:
-                    break;
+                        break;
+                    case 2:
+                        quanhu();
+                        break;
+                    case 3:
+                        ToastUtil.show(this, "收音机");
+                    default:
+                        break;
+                }
+            }
+            else
+            {
+                qunhaoshezhi();
+                shezhi_flag = false;
             }
 
         }
@@ -586,17 +693,96 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
         }
         if (event.getKeyCode() == 41 && event.getAction() == KeyEvent.ACTION_UP) {  //求救呼发按键识别
-            qiujiuqiyong();
+
         }
         if (event.getKeyCode() == 216 && event.getAction() == KeyEvent.ACTION_UP) {  //挂断电话操作
+            if(shezhi_flag)
+            {
+                shezhi_flag=false;
+                button1.setText("船位呼");
+                button2.setText("海呼");
+                button3.setText("全呼");
+                button4.setText("气象呼");
+                button5.setText("联系人");
+                button6.setText("设置");
+                button7.setText("广告");
+                button8.setText("图片");
+            }
             guaduan();
         }   //挂断电话操作
         return super.dispatchKeyEvent(event);
     }
 
+    private static Process process;
+//    private static Process exec_su() {
+//        try {
+//            process = Runtime.getRuntime().exec("sh");
+//
+//            String command = "su";
+//            DataOutputStream outputStream = new DataOutputStream(process.getOutputStream());
+//            outputStream.writeBytes(command+"\n");
+//            outputStream.flush();
+//            outputStream.writeBytes("exit\n");
+//            outputStream.flush();
+//
+//            process.waitFor();
+//
+//            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+//            StringBuilder output = new StringBuilder();
+//            String line;
+//            while ((line =reader.readLine())!=null)
+//            {
+//                output.append(line).append("\n");
+//            }
+//            String result = output.toString();
+//            Log.i("result",result);
+//            return process;
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
+    private static void exec_time(String b1,String c1,String d1,String e1,String a1,String f1) {
+        try {
+            process = Runtime.getRuntime().exec("su");
+            if(process == null)
+                return;
+            String command = "date "+b1+c1+d1+e1+a1+"."+f1;
+//            String command  = "ps | grep sh";
+            DataOutputStream outputStream = new DataOutputStream(process.getOutputStream());
+            outputStream.writeBytes(command+"\n");
+            outputStream.flush();
+            command = "busybox hwclock -w";
+            outputStream.writeBytes(command+"\n");
+            outputStream.flush();
+            outputStream.writeBytes("exit\n");
+            outputStream.flush();
+
+            process.waitFor();
+
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            StringBuilder output = new StringBuilder();
+            String line;
+            while ((line =reader.readLine())!=null)
+            {
+                output.append(line).append("\n");
+            }
+            String result = output.toString();
+            Log.i("result",result);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void shijianshezhi() {
         AlertDialog.Builder builder = new AlertDialog.Builder(SimpleActivity.this);
         builder.setTitle("设置");
+        builder.setIcon(R.drawable.settings);
         View view = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.setshijian, null);
         builder.setView(view);
         EditText shijiannian = (EditText) view.findViewById(R.id.shijiannian);
@@ -654,6 +840,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         });
         builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+            @SuppressLint("SuspiciousIndentation")
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String a1 = shijiannian.getText().toString();
@@ -664,10 +851,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 String f1 = shijianmiao.getText().toString();
 
 
-                if(a1.length()!=4&&b1.length()==0&&
-                 c1.length()==0&&d1.length()==0&&
-                 e1.length()==0&&f1.length()==0) {
+                if(a1.length()!=4||b1.length()==0||
+                 c1.length()==0||d1.length()==0||
+                 e1.length()==0||f1.length()==0) {
                     ToastUtil.show(SimpleActivity.this, "时间设置不能为空！");
+                    shezhi_flag=true;
                     return;
                 }
 
@@ -681,6 +869,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 if((b<=0&&b>=13)||(c<=0&&c>=32)||(d<0&&d>=24)||(e<0&&e>=60)||(f<0)&&(f>=60))
                 {
                     ToastUtil.show(SimpleActivity.this, "时间设置有误！");
+                    shezhi_flag=true;
                     return;
                 }
 
@@ -695,7 +884,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 while(f1.length()<2)
                     f1 = "0".concat(f1);
 
-                setSystemTime(a,b,c,d,e,f);
+                    exec_time(b1,c1,d1,e1,a1,f1);
+
                 StringBuilder data1=new StringBuilder();
                 data1.append(xiangxian);
                 String jd= xiangxian+jingdu_main.getText().toString().substring(3,6)+jingdu_main.getText().toString().substring(7,9)+jingdu_main.getText().toString().substring(10,12);
@@ -707,12 +897,21 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 String checksum=GetCheckSum(checkdata);
                 String getsenddata=GetSendData(checkdata,checksum);
                 sendData(getsenddata);
+                button1.setText("船位呼");
+                button2.setText("海呼");
+                button3.setText("全呼");
+                button4.setText("气象呼");
+                button5.setText("联系人");
+                button6.setText("设置");
+                button7.setText("广告");
+                button8.setText("图片");
             }
         });
         builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 ToastUtil.show(SimpleActivity.this, "设置取消");
+                shezhi_flag = true;
             }
         });
         Dialog dialog1 = builder.create();
@@ -724,6 +923,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         params.width = 300;
         params.height = 300;
         dialog1.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
     }
 
     private void shezhi() {
@@ -758,7 +958,6 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
 //                        webViewisSelected = false;
         }
-        Toast.makeText(SimpleActivity.this, "切换按键按下", Toast.LENGTH_SHORT).show();
     }
 
     private void youyi() {//海图右移
@@ -921,6 +1120,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         dialog1.show();
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
     }
 
     private boolean xindao() {
@@ -987,7 +1187,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             public void onClick(DialogInterface dialog, int which) {
                 String number = et_set.getText().toString();
                 int n = Integer.parseInt(number);
-                if ((n >= 1 && n <= 960)) {  //(n >= 1 && n <= 280) || (n >= 321 && n <= 440)
+                if (((n >= 1 && n <= 280) || (n >= 321 && n <= 480))) {  //(n >= 1 && n <= 280) || (n >= 321 && n <= 440)
                     while (number.length() < 3) {
                         number = "0".concat(number);
                     }
@@ -1021,6 +1221,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         params.width = 300;
         params.height = 180;
         dialog1.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         return false;
     }
 
@@ -1031,13 +1232,16 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder builder513 = new AlertDialog.Builder(SimpleActivity.this);
-        builder513.setIcon(R.drawable.bohao);
+        builder513.setIcon(R.drawable.qixiang);
         builder513.setTitle("气象呼");
         View view513 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_quanhu, null);
         builder513.setView(view513);
         TextView quanhu = (TextView)view513.findViewById(R.id.quanhu);
+        EditText xindaohao = (EditText)view513.findViewById(R.id.xindaohao);
 
         quanhu.setText("气象呼");
+        xindaohao.setText("295");
+        xindaohao.setFocusable(false);
         builder513.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
@@ -1049,24 +1253,32 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 return false;
             }
         });
-        builder513.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+        builder513.setNegativeButton("挂断", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 guaduan();
             }
         });
 
-        Dialog dialog513 = builder513.create();
+        AlertDialog dialog513 = builder513.create();
         Window window = dialog513.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
 
         dialog513.show();
+        Button negativeButton = dialog513.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(negativeParams);
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
         WindowManager.LayoutParams params = dialog513.getWindow().getAttributes();
         params.width = 400;
-        params.height = 280;
         dialog513.getWindow().setAttributes(params);
-
+        NavigationBarUtil.hideNavigationBar(dialog513.getWindow());
         String CheckData = "01B3000318";
         String CheckSum = GetCheckSum(CheckData);
         String data = GetSendData(CheckData, CheckSum);
@@ -1081,6 +1293,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             Toast.makeText(this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
             return true;
         }
+        duanxinimg.setVisibility(View.INVISIBLE);
+        tupian.setVisibility(View.INVISIBLE);
         Intent intent2 = new Intent(SimpleActivity.this, SendMessageActivity.class);
         intent2.putExtra("count_changlanguage",String.valueOf(changlanguage));
         intent2.putExtra("caplook",caplook);
@@ -1155,8 +1369,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String number = et_set.getText().toString();
-                if(number.length()<6){
+                if(number.length()!=6){
                     ToastUtil.show(SimpleActivity.this, "设置失败,群号为6位！");
+                    shezhi_flag = true;
                 }else {
                     qunhao.setText("群号：" + number);
                     ToastUtil.show(SimpleActivity.this, "设置成功");
@@ -1164,6 +1379,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     String CheckSum = GetCheckSum(CheckData);
                     String data = GetSendData(CheckData, CheckSum);
                     sendData(data);
+                    button1.setText("船位呼");
+                    button2.setText("海呼");
+                    button3.setText("全呼");
+                    button4.setText("气象呼");
+                    button5.setText("联系人");
+                    button6.setText("设置");
+                    button7.setText("广告");
+                    button8.setText("图片");
                 }
             }
         });
@@ -1171,6 +1394,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 ToastUtil.show(SimpleActivity.this, "设置取消");
+                shezhi_flag = true;
             }
         });
         Dialog dialog2183 = builder2183.create();
@@ -1179,9 +1403,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         dialog2183.show();
         WindowManager.LayoutParams params = dialog2183.getWindow().getAttributes();
-        params.width = 300;
-        params.height = 180;
+        params.width = 350;
+        params.height = 250;
+
         dialog2183.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog2183.getWindow());
 //                    String CheckData = "FEFCF8F001B3000332";
 //                    String CheckSum = GetCheckSum(CheckData);
 //                    String data = GetSendData(CheckData, CheckSum);
@@ -1275,6 +1501,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         dialog1.show();
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
     }
 
     private void yinliang() {
@@ -1411,6 +1638,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         dialog1.show();
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
     }
 
     private boolean haihu() {
@@ -1420,8 +1648,6 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(SimpleActivity.this);
-        builder.setIcon(R.drawable.bohao);
-        builder.setTitle("海呼");
         View view = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_haihu_send, null);
         builder.setView(view);
         builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
@@ -1497,6 +1723,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
+                if(running)
+                {
+                    Toast.makeText(SimpleActivity.this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
+                    return ;
+                }
                 if (cankaodianjingdumiao.getText().toString().length() > 5) {
                     ToastUtil.show(SimpleActivity.this, "输入错误");
                 } else {
@@ -1555,9 +1786,26 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     pttanjian.setText(" ");
                     Toast.makeText(SimpleActivity.this, "通话挂断", Toast.LENGTH_LONG).show();
                 }
-                kind_of_hujiao.setText("呼叫种类：无");
-                hujiao_number.setVisibility(View.GONE);
-                textView_ComStatus.setText("呼叫状态：无呼叫");
+                if(posmap.containsKey("haihuhujiao")) {
+                    JSONObject para = new JSONObject();
+                    try {
+                        para.put("pos", posmap.get("haihuhujiao"));
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    String p = para.toString();
+                    String js = "javascript:" + "delete_ship" + "(" + p + ")";
+                    Log.i("haihu",js);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+
+                        webView.evaluateJavascript(js, new ValueCallback<String>() {
+                            @Override
+                            public void onReceiveValue(String value) {
+                                //此处为 js 返回的结果
+                            }
+                        });
+                    }
+                }
                 qiujiuflag = false;
                 String CheckData = "01B3000325";
                 String CheckSum = GetCheckSum(CheckData);
@@ -1565,18 +1813,39 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 sendData(data);
             }
         });
-        Dialog dialog1 = builder.create();
+        AlertDialog dialog1 = builder.create();
         dialog1.show();
+        Button positiveButton = dialog1.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negativeButton = dialog1.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams positiveParams =(LinearLayout.LayoutParams)positiveButton.getLayoutParams();
+        positiveParams.gravity = Gravity.CENTER;
+        positiveParams.setMargins(10,10,10,10);
+        positiveParams.width = 0;
+        // 安卓下面有三个位置的按钮，默认权重为 1,设置成 500或更大才能让两个按钮看起来均分
+        positiveParams.weight = 500;
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(positiveParams);
+        negativeButton.setLayoutParams(negativeParams);
+        positiveButton.setBackgroundColor(Color.parseColor("#FF733E"));
+        positiveButton.setTextColor(Color.parseColor("#FFFFFF"));
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
         Window window = dialog1.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
-        params.gravity=Gravity.BOTTOM|Gravity.RIGHT;
-        params.x = 50;
-        params.y = 50;
+//        params.gravity=Gravity.BOTTOM|Gravity.RIGHT;
+//        params.x = 50;
+//        params.y = 50;
         params.width = 400;
-        params.height = 500;
+//        params.height = 500;
+        params.dimAmount = 0.0f;
         dialog1.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         return false;
     }
 
@@ -1684,8 +1953,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         TextView v2 = view1.findViewById(R.id.yinliangfanwei);
         EditText e1 = view1.findViewById(R.id.yinliang);
         v1.setText("亮度设置");
-        v2.setText("亮度（0-7）");
-        e1.setHint("输入亮度值（0-7）");
+        v2.setText("亮度（1-7）");
+        e1.setHint("输入亮度值（1-7）");
         SeekBar sk = view1.findViewById(R.id.seek_bar);
         sk.setMax(7);
         sk.setKeyProgressIncrement(1);
@@ -1713,7 +1982,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     skliangdu = ld;
                     allowModifySettings();
                 }
-                else if(ld>7)
+                else if(ld>7||ld<=0)
                 {
                     Toast.makeText(SimpleActivity.this, "设置范围为1-7", Toast.LENGTH_SHORT).show();
                 }
@@ -1810,6 +2079,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
 
         dialog.show();
+        NavigationBarUtil.hideNavigationBar(dialog.getWindow());
     }
 
     private boolean tupian() {
@@ -1831,11 +2101,13 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder builder513 = new AlertDialog.Builder(SimpleActivity.this);
-        builder513.setIcon(R.drawable.bohao);
+        builder513.setIcon(R.drawable.quanhu);
         builder513.setTitle("全呼");
         View view513 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_quanhu, null);
+        EditText xindaohao = (EditText)view513.findViewById(R.id.xindaohao);
         builder513.setView(view513);
-
+        xindaohao.setText("223");
+        xindaohao.setFocusable(false);
         builder513.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
@@ -1847,23 +2119,32 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 return false;
             }
         });
-        builder513.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+        builder513.setNegativeButton("挂断", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 guaduan();
             }
         });
 
-        Dialog dialog513 = builder513.create();
+        AlertDialog dialog513 = builder513.create();
         Window window = dialog513.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
 
         dialog513.show();
+        Button negativeButton = dialog513.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(negativeParams);
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
         WindowManager.LayoutParams params = dialog513.getWindow().getAttributes();
         params.width = 400;
-        params.height = 280;
         dialog513.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog513.getWindow());
 
         String CheckData = "01B300031A";
         String CheckSum = GetCheckSum(CheckData);
@@ -1896,7 +2177,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
     private void setGPS() {
         AlertDialog.Builder builder513 = new AlertDialog.Builder(SimpleActivity.this);
-        builder513.setIcon(R.drawable.bohao);
+        builder513.setIcon(R.drawable.settings);
         builder513.setTitle("设置GPS");
         View view513 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_set_gps, null);
         builder513.setView(view513);
@@ -1950,58 +2231,90 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             }
         });
         builder513.setPositiveButton("确定", new DialogInterface.OnClickListener() {
-            EditText jingdu_set = (EditText) view513.findViewById(R.id.jingdu_set);
-            EditText weidu_set = (EditText) view513.findViewById(R.id.weidu_set);
-            EditText et_xiangxian = (EditText) view513.findViewById(R.id.xiangxian);
+            EditText jingdudu_set = (EditText) view513.findViewById(R.id.gpsjddu);
+            EditText jingdufen_set = (EditText) view513.findViewById(R.id.gpsjdfen);
+            EditText jingdumiao_set = (EditText) view513.findViewById(R.id.gpsjdmiao);
+            EditText weidudu_set = (EditText) view513.findViewById(R.id.gpswddu);
+            EditText weidufen_set = (EditText) view513.findViewById(R.id.gpswdfen);
+            EditText weidumiao_set = (EditText) view513.findViewById(R.id.gpswdmiao);
+
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                String wd = "";
-                String jd = "";
-                if (weidu_set.getText().toString().length() < 6 || jingdu_set.getText().toString().length() < 7 || et_xiangxian.getText().toString().length() != 1) {
+                String jd1 = jingdudu_set.getText().toString();
+                String jd2 = jingdufen_set.getText().toString();
+                String jd3 = jingdumiao_set.getText().toString();
+                String wd1 = weidudu_set.getText().toString();
+                String wd2 = weidufen_set.getText().toString();
+                String wd3 = weidumiao_set.getText().toString();
+                if (jd1.length() > 3 ||jd1.length() == 0|| jd2.length() > 2 ||jd2.length() == 0|| jd3.length() > 2||jd3.length() == 0
+                ||wd1.length()>2||wd1.length() == 0|| wd2.length()>2||wd2.length()==0|| wd3.length()>2||wd3.length()==0
+                ) {
+
                     ToastUtil.show(SimpleActivity.this, "GPS输入错误");
+                    shezhi_flag=true;
+                } else if (Integer.parseInt(jd1)>179||Integer.parseInt(jd2)>59
+                ||Integer.parseInt(jd3)>59||Integer.parseInt(wd1)>89
+                ||Integer.parseInt(wd2)>59||Integer.parseInt(wd3)>59
+                ) {
+
+                    ToastUtil.show(SimpleActivity.this, "GPS输入错误");
+                    shezhi_flag=true;
                 } else {
-                    switch (et_xiangxian.getText().toString()) {
-                        case "0":
-                            jd  = jingdu_set.getText().toString().substring(0, 3) + "°" + jingdu_set.getText().toString().substring(3, 5) + "′" +
-                                    jingdu_set.getText().toString().substring(5, 7) + "″" + "E";
-                            wd = weidu_set.getText().toString().substring(0, 2) + "°" + weidu_set.getText().toString().substring(2, 4) + "′" +
-                                    weidu_set.getText().toString().substring(4, 6) + "″" + "N";
-                            xiangxian="0";
-                            break;
-                        case "1":
-                            jd = jingdu_set.getText().toString().substring(0, 3) + "°" + jingdu_set.getText().toString().substring(3, 5) + "′" +
-                                    jingdu_set.getText().toString().substring(5, 7) + "″" + "W";
-                            wd = weidu_set.getText().toString().substring(0, 2) + "°" + weidu_set.getText().toString().substring(2, 4) + "′" +
-                                    weidu_set.getText().toString().substring(4, 6) + "″" + "N";
-                            xiangxian="1";
-                            break;
-                        case "2":
-                            jd = jingdu_set.getText().toString().substring(0, 3) + "°" + jingdu_set.getText().toString().substring(3, 5) + "′" +
-                                    jingdu_set.getText().toString().substring(5, 7) + "″" + "W";
-                            wd = weidu_set.getText().toString().substring(0, 2) + "°" + weidu_set.getText().toString().substring(2, 4) + "′" +
-                                    weidu_set.getText().toString().substring(4, 6) + "″" + "S";
-                            xiangxian="2";
-                            break;
-                        case "3":
-                            jd = jingdu_set.getText().toString().substring(0, 3) + "°" + jingdu_set.getText().toString().substring(3, 5) + "′" +
-                                    jingdu_set.getText().toString().substring(5, 7) + "″" +"E";
-                            wd = weidu_set.getText().toString().substring(0, 2) + "°" + weidu_set.getText().toString().substring(2, 4) + "′" +
-                                    weidu_set.getText().toString().substring(4, 6) + "″" +"S";
-                            xiangxian="3";
-                            break;
-                        default:
-                            break;
+                    StringBuilder data1=new StringBuilder();
+                    while(jd1.length()<3)
+                    {
+                        jd1 = "0".concat(jd1);
                     }
+                    while(jd2.length()<2)
+                    {
+                        jd2 = "0".concat(jd2);
+                    }
+                    while(jd3.length()<2)
+                    {
+                        jd3 = "0".concat(jd3);
+                    }
+                    while(wd1.length()<2)
+                    {
+                        wd1 = "0".concat(wd1);
+                    }
+                    while(wd2.length()<2)
+                    {
+                        wd2 = "0".concat(wd2);
+                    }
+                    while(wd3.length()<2)
+                    {
+                        wd3 = "0".concat(wd3);
+                    }
+                    data1.append(xiangxian);
+                    String jd= xiangxian+jd1+jd2+jd3;
+                    data1.append(Integer.toHexString(Integer.valueOf(jd)).toUpperCase());
+                    String wd=wd1+wd2+wd3;
+                    data1.append(Integer.toHexString(Integer.valueOf(wd)).toUpperCase());
+                    data1.append(timeupdate.substring(0, 2)+timeupdate.substring(2, 4)+timeupdate.substring(4, 6));
+                    data1.append(timeupdate.substring(6, 8)+timeupdate.substring(8, 10)+timeupdate.substring(10, 12));
+                    String checkdata="01B3000F31"+data1.toString();
+                    String checksum=GetCheckSum(checkdata);
+                    String getsenddata=GetSendData(checkdata,checksum);
+                    sendData(getsenddata);
+                    jingdu_main.setText("经度:" + jd1+"°"+jd2+"′"+jd3+"″E");
+                    weidu_main.setText("纬度:" + wd1+"°"+wd2+"′"+wd3+"″N");
+                    button1.setText("船位呼");
+                    button2.setText("海呼");
+                    button3.setText("全呼");
+                    button4.setText("气象呼");
+                    button5.setText("联系人");
+                    button6.setText("设置");
+                    button7.setText("广告");
+                    button8.setText("图片");
                 }
-                jingdu_main.setText("经度:" + jd);
-                weidu_main.setText("纬度:" + wd);
             }
         });
         builder513.setNegativeButton("取消", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 ToastUtil.show(SimpleActivity.this, "取消设置");
+                shezhi_flag = true;
             }
         });
         Dialog dialog513 = builder513.create();
@@ -2011,9 +2324,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 
         dialog513.show();
         WindowManager.LayoutParams params = dialog513.getWindow().getAttributes();
-        params.width = 400;
-        params.height = 280;
+        params.width = 450;
+        params.height = 350;
         dialog513.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog513.getWindow());
     }
 
     private void chuanwei() {
@@ -2120,13 +2434,12 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(SimpleActivity.this);
-        builder.setIcon(R.drawable.bohao);
+        builder.setIcon(R.drawable.qunhu);
         builder.setTitle("群呼");
         View view = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_send_qunhu, null);
         builder.setView(view);
         builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
             EditText qunhuhao = (EditText) view.findViewById(R.id.qunhuhao);
-            EditText xindaohao = (EditText) view.findViewById(R.id.xindaohao);
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -2137,35 +2450,32 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-
-                String qunhuString = qunhuhao.getText().toString();
-                String xindaoString = xindaohao.getText().toString();
-                if(qunhuString.length()==0||xindaoString.length()==0)
-                        return;
-
-                xindaoString = Integer.toHexString(Integer.parseInt(xindaoString));
-
-                while (xindaoString.length() < 4) {
-                    xindaoString = "0".concat(xindaoString);
+                if(running)
+                {
+                    Toast.makeText(SimpleActivity.this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
+                    return ;
                 }
+                String qunhuString = qunhuhao.getText().toString();
+                if(qunhuString.length()==0) {
+                    ToastUtil.show(SimpleActivity.this, "群号不为空！");
+                    return;
+                }
+
+
+
                 if(qunhuString.length()!=6){
                     ToastUtil.show(SimpleActivity.this, "群号输入错误！");
-                }else if(xindaoString.length()!=4)
-                {
-                    ToastUtil.show(SimpleActivity.this, "信道号输入错误！");
                 }
                 else {
-                    String CheckData = "01B3000813"+qunhuString+xindaoString;
+                    String CheckData = "01B3000613"+qunhuString;
                     String CheckSum = GetCheckSum(CheckData);
                     String data = GetSendData(CheckData, CheckSum);
                     sendData(data);
 //                                ToastUtil.show(SimpleActivity.this, "正在发送中。。。");
+                    qunhuhao.setFocusable(false);
                     qunhuhujiao = (TextView) view.findViewById(R.id.qunhuhhujiao);
                     qunhuhujiao.setText("正在呼叫......");
                     hujiaomap.put("qunhuhujiao",qunhuhujiao);
-                    kind_of_hujiao.setText("呼叫种类：群呼");
-                    hujiao_number.setVisibility(View.VISIBLE);
-                    hujiao_number.setText("群号："+qunhuString);
                 }
             }
         });
@@ -2243,18 +2553,37 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 return false;
             }
         });
-        Dialog dialog1 = builder.create();
+        AlertDialog dialog1 = builder.create();
         dialog1.show();
+        Button positiveButton = dialog1.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negativeButton = dialog1.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams positiveParams =(LinearLayout.LayoutParams)positiveButton.getLayoutParams();
+        positiveParams.gravity = Gravity.CENTER;
+        positiveParams.setMargins(10,10,10,10);
+        positiveParams.width = 0;
+        // 安卓下面有三个位置的按钮，默认权重为 1,设置成 500或更大才能让两个按钮看起来均分
+        positiveParams.weight = 500;
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(positiveParams);
+        negativeButton.setLayoutParams(negativeParams);
+        positiveButton.setBackgroundColor(Color.parseColor("#FF733E"));
+        positiveButton.setTextColor(Color.parseColor("#FFFFFF"));
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
         Window window = dialog1.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         WindowManager.LayoutParams params22 = dialog1.getWindow().getAttributes();
-        params22.gravity = Gravity.BOTTOM|Gravity.RIGHT;
-        params22.x = 50;
-        params22.y = 50;
+//        params22.gravity = Gravity.BOTTOM|Gravity.RIGHT;
+//        params22.x = 50;
+//        params22.y = 50;
         params22.width = 400;
-        params22.height = 300;
         dialog1.getWindow().setAttributes(params22);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         return false;
     }
 
@@ -2264,13 +2593,59 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             Toast.makeText(this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
             return true;
         }
-        Toast.makeText(SimpleActivity.this, "求救呼叫指令发送", Toast.LENGTH_LONG).show();
+        AlertDialog.Builder builder513 = new AlertDialog.Builder(SimpleActivity.this);
+        View view513 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_quanhu, null);
+        builder513.setView(view513);
+        builder513.setIcon(R.drawable.qiujiu);
+        builder513.setTitle("求救");
+        TextView quanhu = (TextView)view513.findViewById(R.id.quanhu);
+        EditText xindaohao = (EditText)view513.findViewById(R.id.xindaohao);
+
+        quanhu.setText("求 救");
+        xindaohao.setText("293");
+        xindaohao.setFocusable(false);
+        builder513.setOnKeyListener(new DialogInterface.OnKeyListener() {
+            @Override
+            public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                    Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                    btn_neg.performClick(); //点击取消
+                    sendKeyCode(216);
+                }
+                return false;
+            }
+        });
+        builder513.setNegativeButton("挂断", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                guaduan();
+            }
+        });
+
+        AlertDialog dialog513 = builder513.create();
+        dialog513.show();
+        Button negativeButton = dialog513.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
+        Window window = dialog513.getWindow();
+        window.setBackgroundDrawableResource(R.drawable.dialog_style);
+        window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
+
+        WindowManager.LayoutParams params = dialog513.getWindow().getAttributes();
+        params.width = 400;
+        params.height=350;
+        params.dimAmount = 0.0f;
+        dialog513.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog513.getWindow());
         String CheckData = "01B3000311";
         String CheckSum = GetCheckSum(CheckData);
         String data = GetSendData(CheckData, CheckSum);
         sendData(data);
-        textView_ComStatus.setText("呼叫状态：呼叫中");
-        kind_of_hujiao.setText("呼叫种类：求救");
         qiujiuflag = true;
         return false;
     }
@@ -2282,12 +2657,13 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder bd = new AlertDialog.Builder(SimpleActivity.this);
-        bd.setIcon(R.drawable.saomiao);
-        bd.setTitle("扫描");
         View view2 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.activity_saomiao, null);
         bd.setView(view2);
         saomiao = view2.findViewById(R.id.xindaosaomiao);
         saomiaoxindao = view2.findViewById(R.id.saomiaoxindaohao);
+        radarView = (RadarView) view2.findViewById(R.id.radar);
+        //设置雷达扫描方向
+        radarView.setDirection(RadarView.ANTI_CLOCK_WISE);
         bd.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
@@ -2316,6 +2692,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 }
                 Scan_flag = true;
                 saomiao.setVisibility(View.VISIBLE);
+                saomiao.setText("扫描中......");
+                radarView.start();
             }
         });
         bd.setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -2339,17 +2717,38 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 String CheckSum = GetCheckSum(CheckData);
                 String data = GetSendData(CheckData, CheckSum);
                 sendData(data);
+                radarView.saomiaostop();
             }
         });
-        Dialog dl = bd.create();
-        dl.show();
-        Window window = dl.getWindow();
+        AlertDialog dialog1 = bd.create();
+        dialog1.show();
+        Button positiveButton = dialog1.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negativeButton = dialog1.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams positiveParams =(LinearLayout.LayoutParams)positiveButton.getLayoutParams();
+        positiveParams.gravity = Gravity.CENTER;
+        positiveParams.setMargins(10,10,10,10);
+        positiveParams.width = 0;
+        // 安卓下面有三个位置的按钮，默认权重为 1,设置成 500或更大才能让两个按钮看起来均分
+        positiveParams.weight = 500;
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(positiveParams);
+        negativeButton.setLayoutParams(negativeParams);
+        positiveButton.setBackgroundColor(Color.parseColor("#FF733E"));
+        positiveButton.setTextColor(Color.parseColor("#FFFFFF"));
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
+        Window window = dialog1.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
-        WindowManager.LayoutParams p = dl.getWindow().getAttributes();
+        WindowManager.LayoutParams p = dialog1.getWindow().getAttributes();
         p.width = 400;
         p.height = 320;
-        dl.getWindow().setAttributes(p);
+        dialog1.getWindow().setAttributes(p);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         return false;
     }
 
@@ -2360,10 +2759,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(SimpleActivity.this);
-        builder.setIcon(R.drawable.bohao);
-        builder.setTitle("船位呼");
         View view = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_chuanwei_send, null);
         builder.setView(view);
+        builder.setIcon(R.drawable.chuanwei);
+        builder.setTitle("船位呼");
         builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
@@ -2425,7 +2824,11 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-
+                if(running)
+                {
+                    Toast.makeText(SimpleActivity.this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
+                    return ;
+                }
                 if (zhongduanhao.getText().toString().length() != 9) {
                     ToastUtil.show(SimpleActivity.this, "输入错误");
                 } else {
@@ -2460,12 +2863,27 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 if (running) {
                     running = false;
                     seconds = 0;
-                    pttanjian.setText(" ");
                     Toast.makeText(SimpleActivity.this, "通话挂断", Toast.LENGTH_LONG).show();
                 }
-                kind_of_hujiao.setText("呼叫种类：无");
-                hujiao_number.setVisibility(View.GONE);
-                textView_ComStatus.setText("呼叫状态：无呼叫");
+                if(posmap.containsKey("chuanweihufa"))
+                {
+                    JSONObject para = new JSONObject();
+                    try {
+                        para.put("pos", posmap.get("chuanweihufa"));
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    String p = para.toString();
+                    String js = "javascript:" + "delete_ship" + "(" + p + ")";
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                        webView.evaluateJavascript(js, new ValueCallback<String>() {
+                            @Override
+                            public void onReceiveValue(String value) {
+                                //此处为 js 返回的结果
+                            }
+                        });
+                    }
+                }
                 qiujiuflag = false;
                 String CheckData = "01B3000325";
                 String CheckSum = GetCheckSum(CheckData);
@@ -2474,18 +2892,39 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 //                            ToastUtil.show(SimpleActivity.this, "取消选呼");
             }
         });
-        Dialog dialog1 = builder.create();
+        AlertDialog dialog1 = builder.create();
         dialog1.show();
+        Button positiveButton = dialog1.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negativeButton = dialog1.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams positiveParams =(LinearLayout.LayoutParams)positiveButton.getLayoutParams();
+        positiveParams.gravity = Gravity.CENTER;
+        positiveParams.setMargins(10,10,10,10);
+        positiveParams.width = 0;
+        // 安卓下面有三个位置的按钮，默认权重为 1,设置成 500或更大才能让两个按钮看起来均分
+        positiveParams.weight = 500;
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(positiveParams);
+        negativeButton.setLayoutParams(negativeParams);
+        positiveButton.setBackgroundColor(Color.parseColor("#FF733E"));
+        positiveButton.setTextColor(Color.parseColor("#FFFFFF"));
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
         Window window = dialog1.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
-        params.gravity = Gravity.BOTTOM|Gravity.RIGHT;
-        params.x = 50;
-        params.y = 50;
+//        params.gravity = Gravity.BOTTOM|Gravity.RIGHT;
+//        params.x = 50;
+//        params.y = 50;
         params.width = 400;
-        params.height = 350;
+        params.height = 400;
+        params.dimAmount = 0.0f;
         dialog1.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         return false;
     }
 
@@ -2496,10 +2935,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
             return true;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(SimpleActivity.this);
-        builder.setIcon(R.drawable.bohao);
-        builder.setTitle("选呼");
         View view = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_xuanhuan_send, null);
         builder.setView(view);
+        builder.setIcon(R.drawable.xuanhu);
+        builder.setTitle("选呼");
         builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
@@ -2550,7 +2989,6 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         });
         builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
             EditText zhongduanhao = (EditText) view.findViewById(R.id.zhongduanhao);
-            EditText xindaohao = (EditText) view.findViewById(R.id.xindaohao);
 
 
             @Override
@@ -2562,18 +3000,21 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-
-                if (zhongduanhao.getText().toString().length() != 9||xindaohao.getText().toString().length()==0) {
+                if(running)
+                {
+                    Toast.makeText(SimpleActivity.this,"通话占用中！请先取消当前通话！",Toast.LENGTH_SHORT).show();
+                    return ;
+                }
+                if (zhongduanhao.getText().toString().length() != 9) {
                     ToastUtil.show(SimpleActivity.this, "输入错误");
                 } else {
                     String a = zhongduanhao.getText().toString();
-                    String b = xindaohao.getText().toString();
+                    zhongduanhao.setFocusable(false);
+                    xuanhuxindao = (EditText) view.findViewById(R.id.xindaohao);
+                    xuanhuxindao.setFocusable(false);
+                    xuanhu_flag = true;
                     hujiaomap.put("xuanhuhujiao",xuanhuhujiao);
-                    b = Integer.toHexString(Integer.parseInt(b));
-                    while (b.length() < 4) {
-                        b = "0".concat(b);
-                    }
-                    String CheckData = "01B3000A16" + "0" + a + b;
+                    String CheckData = "01B3000816" + "0" + a;
                     String CheckSum = GetCheckSum(CheckData);
 //                                ToastUtil.show(SimpleActivity.this, "电台号: " + a + ", 信道号: " + b);
                     xuanhuhujiao = (TextView) view.findViewById(R.id.xuanhuhujiao);
@@ -2631,19 +3072,40 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 //                            ToastUtil.show(SimpleActivity.this, "取消选呼");
             }
         });
-        Dialog dialog1 = builder.create();
+        AlertDialog dialog1 = builder.create();
         dialog1.show();
+        Button positiveButton = dialog1.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negativeButton = dialog1.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams positiveParams =(LinearLayout.LayoutParams)positiveButton.getLayoutParams();
+        positiveParams.gravity = Gravity.CENTER;
+        positiveParams.setMargins(10,10,10,10);
+        positiveParams.width = 0;
+        // 安卓下面有三个位置的按钮，默认权重为 1,设置成 500或更大才能让两个按钮看起来均分
+        positiveParams.weight = 500;
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(positiveParams);
+        negativeButton.setLayoutParams(negativeParams);
+        positiveButton.setBackgroundColor(Color.parseColor("#FF733E"));
+        positiveButton.setTextColor(Color.parseColor("#FFFFFF"));
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
         Window window = dialog1.getWindow();
         window.setBackgroundDrawableResource(R.drawable.dialog_style);
         window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
-        params.gravity = Gravity.BOTTOM|Gravity.RIGHT;
-        params.x = 50;
-        params.y = 50;
-        params.width = 400;
-        params.height = 350;
+//        params.gravity = Gravity.BOTTOM|Gravity.RIGHT;
+//        params.x = 50;
+//        params.y = 50;
+        params.width = 500;
+        params.height = 500;
+
         params.dimAmount = 0.0f;
         dialog1.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         return false;
     }
 
@@ -2729,12 +3191,19 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private void initView() {
         player = (CommenPlayer) findViewById(R.id.player);
         webView = (WebView) findViewById(R.id.map);
+        webView.setFocusable(false);
         aispower = (ImageView) findViewById(R.id.ais_power);
         videopower = (ImageView) findViewById(R.id.video_power);
         diantaihao = (TextView) findViewById(R.id.diantaihao);
+        diantaihao.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
         xingdaohao = (TextView) findViewById(R.id.xindaohao);
+        xingdaohao.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
         jingdu_main = (TextView) findViewById(R.id.chuanwei1);
         weidu_main = (TextView) findViewById(R.id.chuanwei2);
+        jingdu_main.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
+        weidu_main.setTypeface(Typeface.createFromAsset(getAssets(), "fonts/kaishu.ttf"));
+        duanxinimg = (ImageView) findViewById(R.id.duanxin);
+        tupian = (ImageView)findViewById(R.id.tupian);
     }
 
     private void initPlayer() {
@@ -2950,6 +3419,10 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     while (s99.length() < 3) {
                         s99 = "0".concat(s99);
                     }
+                    if(xuanhu_flag&&xuanhuxindao!=null) {
+                        xuanhuxindao.setText(s99);
+                        xuanhu_flag = false;
+                    }
                     xingdaohao.setText("信道号:" + s99);
                     data = "";// data使用完 清空
                     data_use = false;
@@ -2977,24 +3450,36 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     data_use = false;
                     break;
                 case "12":   //求救收
-                    if(dialogtemp!=null)
+                    if(dialogtemp!=null&&cmd_temp.equals("12"))
                         break;
+                    qiehuan(true);
+                    cmd_temp = "12";
                     AlertDialog.Builder builder12 = new AlertDialog.Builder(SimpleActivity.this);
-                    builder12.setIcon(R.drawable.ring_icon);
-                    builder12.setTitle("收到求救呼叫");
+                    builder12.setIcon(R.drawable.qiujiu);
+                    builder12.setTitle("收到报警");
                     View view2 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_send_qiujiu, null);
-                    TextView tv_zhongduan = (TextView) view2.findViewById(R.id.zhongduanhao);
+                    EditText tv_zhongduan = (EditText) view2.findViewById(R.id.zhongduanhao);
+                    EditText tv_xindaohao = (EditText)view2.findViewById(R.id.xindaohao);
                     TextView tv_jingdu = (TextView) view2.findViewById(R.id.jingdu);
                     TextView tv_weidu = (TextView) view2.findViewById(R.id.weidu);
+                    TextView qiujiuhujiao = (TextView) view2.findViewById(R.id.qiujiuhujiao);
                     Map<String, String> map12 = GetGps(data.substring(28, 40),xiangxian,false);
+                    int jdt0 = Integer.parseInt(data.substring(28, 40).substring(0, 7), 16);
+                    int wdt0 = Integer.parseInt(data.substring(28, 40).substring(7, 12), 16);
+                    String jds0 = Integer.toString(jdt0);
+                    String wds0 = Integer.toString(wdt0);
+                    addship(jds0,wds0,"qiujiu");
                     String jd12 = map12.get("jd");
                     String wd12 = map12.get("wd");
                     tv_jingdu.setText(jd12);
+                    tv_jingdu.setFocusable(false);
                     tv_weidu.setText(wd12);
-                    tv_zhongduan.setText("来自终端号：" + data.substring(19, 28) + " 的呼叫");
-                    kind_of_hujiao.setText("呼叫种类：求救");
-                    hujiao_number.setVisibility(View.VISIBLE);
-                    hujiao_number.setText("对方船号："+data.substring(19, 28));
+                    tv_weidu.setFocusable(false);
+                    tv_zhongduan.setText( data.substring(19, 28) );
+                    tv_zhongduan.setFocusable(false);
+                    tv_xindaohao.setText("293");
+                    tv_xindaohao.setFocusable(false);
+                    qiujiuhujiao.setText("呼叫成功");
                     builder12.setView(view2);
                     builder12.setOnKeyListener(new DialogInterface.OnKeyListener() {
                         @Override
@@ -3012,34 +3497,61 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     builder12.setNegativeButton("拒绝", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            deleteship("qiujiu");
                             guaduan();
                         }
                     });
                     dialogtemp = builder12.create();
-//                    if (!dialog12.isShowing()) {
-//                        dialog12.show();
-//                    }
                     dialogtemp.show();
+                    Button negativeButton = dialogtemp.getButton(AlertDialog.BUTTON_NEGATIVE);
+                    LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+                    negativeParams.gravity = Gravity.CENTER;
+                    negativeParams.setMargins(10,10,10,10);
+                    negativeParams.width = 0;
+                    negativeParams.weight = 500;
+                    negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+                    negativeButton.setTextColor(Color.parseColor("#000000"));
+                    Window window1 = dialogtemp.getWindow();
+                    window1.setBackgroundDrawableResource(R.drawable.dialog_style);
+                    window1.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
+                    WindowManager.LayoutParams p = dialogtemp.getWindow().getAttributes();
+//                    p.gravity=Gravity.BOTTOM|Gravity.RIGHT;
+//                    p.x = 50;
+//                    p.y = 50;
+                    p.width = 400;
+                    p.dimAmount = 0.0f;
+                    dialogtemp.getWindow().setAttributes(p);
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     //sendTouchEvent(100, 100);
                     data_use = false;
                     data = "";
                     break;
                 case "19":   //气象收
-                    if(dialogtemp!=null)
+                    if(dialogtemp!=null&&cmd_temp.equals("19"))
                         break;
+                    qiehuan(true);
+                    cmd_temp = "19";
                     AlertDialog.Builder builder19 = new AlertDialog.Builder(SimpleActivity.this);
-                    builder19.setIcon(R.drawable.ring_icon);
-                    builder19.setTitle("收到气象呼叫");
+                    builder19.setIcon(R.drawable.qixiang);
+                    builder19.setTitle("收到气象呼");
                     View view3 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_send_qiujiu, null);
                     TextView tv_zhongduan1 = (TextView) view3.findViewById(R.id.zhongduanhao);
+                    TextView tv_qixiang = (TextView)view3.findViewById(R.id.qiujiutitle);
                     TextView tv_jingdu1 = (TextView) view3.findViewById(R.id.jingdu);
                     TextView tv_weidu1 = (TextView) view3.findViewById(R.id.weidu);
+                    TextView hujiao = (TextView)view3.findViewById(R.id.qiujiuhujiao);
+                    EditText xindaohao1 = (EditText) view3.findViewById(R.id.xindaohao);
                     Map<String, String> map19 = GetGps(data.substring(28, 40),xiangxian,false);
                     String jd19 = map19.get("jd");
                     String wd19 = map19.get("wd");
+                    tv_qixiang.setText("收到气象呼");
+                    xindaohao1.setText("295");
+                    xindaohao1.setFocusable(false);
                     tv_jingdu1.setText(jd19);
                     tv_weidu1.setText(wd19);
-                    tv_zhongduan1.setText("来自终端号：" + data.substring(19, 28) + " 的呼叫");
+                    hujiao.setText("呼叫成功");
+                    tv_zhongduan1.setText( data.substring(19, 28) );
+                    tv_zhongduan1.setFocusable(false);
 //                    kind_of_hujiao.setText("呼叫种类：气象");
 //                    hujiao_number.setVisibility(View.VISIBLE);
 //                    hujiao_number.setText("对方船号："+data.substring(19, 28));
@@ -3064,10 +3576,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         }
                     });
                     dialogtemp = builder19.create();
+                    Window window3 = dialogtemp.getWindow();
+                    window3.setBackgroundDrawableResource(R.drawable.dialog_style);
+                    window3.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
 //                    if (!dialog12.isShowing()) {
 //                        dialog12.show();
 //                    }
                     dialogtemp.show();
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     //sendTouchEvent(100, 100);
                     data_use = false;
                     data = "";
@@ -3095,46 +3611,29 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     {
                         xuanhuhujiaojd.setText(jd34);
                         xuanhuhujiaowd.setText(wd34);
-                        int a = Integer.parseInt(jdsa.substring(0, 3));
-                        double b = (double) Integer.parseInt(jdsa.substring(3, 5))/60;
-                        double c = (double)Integer.parseInt(jdsa.substring(5, 7))/3600;
-                        int d = Integer.parseInt(wdsa.substring(0, 2));
-                        double f = (double) Integer.parseInt(wdsa.substring(2, 4))/60;
-                        double g = (double)Integer.parseInt(wdsa.substring(4, 6))/3600;
-                        int j = 1;
-                        while (posmap.containsValue(j))
-                            j++;
-                        posmap.put("xuanhuhujiao",j);
-                        JSONObject para = new JSONObject();
-                        try {
-                            para.put("x",a+b+c);
-                            para.put("y",d+f+g) ;
-                            para.put("pos", j);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                        String p = para.toString();
-                        String js = "javascript:" + "add_ship" + "(" + p + ")";
-                        webView.evaluateJavascript(js, new ValueCallback<String>() {
-                            @Override
-                            public void onReceiveValue(String value) {
-                                //此处为 js 返回的结果
-                            }
-                        });
+                        addship(jdsa, wdsa, "xuanhuhujiao");
                     }
                     if(hujiaomap.containsKey("chuanweihufa"))
                     {
                         chuanweihujiaojd.setText(jd34);
                         chuanweihujiaowd.setText(wd34);
+                        addship(jdsa, wdsa, "chuanweihufa");
+
+                    }
+                    if(hujiaomap.containsKey("haihuhujiao"))
+                    {
+                        addship(jdsa, wdsa, "haihuhujiao");
                     }
                     break;
                 case "38":
-                    if(dialogtemp!=null) {
+                    if(dialogtemp!=null&&cmd_temp.equals("38")) {
                         Log.i("tag", "dialog break");
                         break;
                     }
+                    qiehuan(true);
+                    cmd_temp = "38";
                     AlertDialog.Builder builder38 = new AlertDialog.Builder(SimpleActivity.this);
-                    builder38.setIcon(R.drawable.ring_icon);
+                    builder38.setIcon(R.drawable.chuanwei);
                     builder38.setTitle("收到船位呼");
                     View view38 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_chuanwei_send, null);
                     EditText zhongduanhao38 = (EditText) view38.findViewById(R.id.chuanweihu_zhongduanhao);
@@ -3144,17 +3643,24 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     xuanhuhujiao38.setText("呼叫成功");
 
                     zhongduanhao38.setText(data.substring(19, 28));
-                    zhongduanhao38.setFocusableInTouchMode(false);
+                    zhongduanhao38.setFocusable(false);
                     int xindaohao38 = Integer.parseInt(data.substring(28, 32), 16);
                     String xindao38 = String.valueOf(xindaohao38);
                     if (xindao38.length() < 3) {
                         xindao38 = "0".concat(xindao38);
                     }
                     Map<String, String> map38 = GetGps(data.substring(32, 44),xiangxian,false);
+                    int jdt1 = Integer.parseInt(data.substring(32, 44).substring(0, 7), 16);
+                    int wdt1 = Integer.parseInt(data.substring(32, 44).substring(7, 12), 16);
+                    String jds1 = Integer.toString(jdt1);
+                    String wds1 = Integer.toString(wdt1);
+                    addship(jds1,wds1,"chuanweihufa");
                     String jd38 = map38.get("jd");
                     String wd38 = map38.get("wd");
                     jingdu38.setText(jd38);
+                    jingdu38.setFocusable(false);
                     weidu38.setText(wd38);
+                    weidu38.setFocusable(false);
 //                    kind_of_hujiao.setText("呼叫种类：选呼");
 //                    hujiao_number.setVisibility(View.VISIBLE);
 //                    hujiao_number.setText("对方船号："+data.substring(19, 28));
@@ -3175,6 +3681,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     builder38.setNegativeButton("拒绝", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            deleteship("chuanweihufa");
                             guaduan();
                         }
                     });
@@ -3188,15 +3695,17 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     params.dimAmount=0.0f;
                     dialogtemp.getWindow().setAttributes(params);
                     dialogtemp.show();
-                    dialogtemp.show();
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     data_use = false;
                     data = "";
                     break;
                 case "17":  //选呼收
-                    if(dialogtemp!=null)
+                    if(dialogtemp!=null&&cmd_temp.equals("17"))
                         break;
+                    qiehuan(true);
+                    cmd_temp = "17";
                     AlertDialog.Builder builder17 = new AlertDialog.Builder(SimpleActivity.this);
-                    builder17.setIcon(R.drawable.ring_icon);
+                    builder17.setIcon(R.drawable.xuanhu);
                     builder17.setTitle("收到选呼");
                     View view17 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_xuanhuan_send, null);
                     EditText zhongduanhao17 = (EditText) view17.findViewById(R.id.zhongduanhao);
@@ -3205,20 +3714,27 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     TextView weidu = (TextView)view17.findViewById(R.id.weidu);
                     TextView xuanhuhujiao1 = (TextView)view17.findViewById(R.id.xuanhuhujiao);
                     xuanhuhujiao1.setText("呼叫成功");
+                    xuanhuhujiao1.setFocusable(false);
 
                     zhongduanhao17.setText(data.substring(19, 28));
                     xindaohao17.setFocusable(false);
-                    xindaohao17.setFocusableInTouchMode(false);
                     int xindaohao = Integer.parseInt(data.substring(28, 32), 16);
                     String xindao = String.valueOf(xindaohao);
                     if (xindao.length() < 3) {
                         xindao = "0".concat(xindao);
                     }
                     Map<String, String> map1 = GetGps(data.substring(32, 44),xiangxian,false);
+                    int jdt2 = Integer.parseInt(data.substring(32, 44).substring(0, 7), 16);
+                    int wdt2 = Integer.parseInt(data.substring(32, 44).substring(7, 12), 16);
+                    String jds2 = Integer.toString(jdt2);
+                    String wds2 = Integer.toString(wdt2);
+                    addship(jds2,wds2,"xuanhuhujiao");
                     String jd1 = map1.get("jd");
                     String wd1 = map1.get("wd");
                     jingdu.setText(jd1);
+                    jingdu.setFocusable(false);
                     weidu.setText(wd1);
+                    weidu.setFocusable(false);
 //                    kind_of_hujiao.setText("呼叫种类：选呼");
 //                    hujiao_number.setVisibility(View.VISIBLE);
 //                    hujiao_number.setText("对方船号："+data.substring(19, 28));
@@ -3237,40 +3753,52 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             return false;
                         }
                     });
-                    builder17.setNegativeButton("拒绝", new DialogInterface.OnClickListener() {
+                    builder17.setNegativeButton("挂断", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            deleteship("xuanhuhujiao");
                             guaduan();
                         }
                     });
                     dialogtemp = builder17.create();
-                    Window window1 = dialogtemp.getWindow();
-                    window1.setBackgroundDrawableResource(R.drawable.dialog_style);
-                    window1.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
+                    Window window2 = dialogtemp.getWindow();
+                    window2.setBackgroundDrawableResource(R.drawable.dialog_style);
+                    window2.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
                     WindowManager.LayoutParams params1 = dialogtemp.getWindow().getAttributes();
                     params1.width = 400;
                     params1.height = 350;
                     params1.dimAmount = 0.0f;
                     dialogtemp.getWindow().setAttributes(params1);
                     dialogtemp.show();
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     data_use = false;
                     data = "";
                     break;
                 case "14":  //群呼收
-                    if(dialogtemp!=null)
+                    if(dialogtemp!=null&&cmd_temp.equals("14"))
                         break;
+                    qiehuan(true);
+                    cmd_temp = "14";
                     AlertDialog.Builder builder14 = new AlertDialog.Builder(SimpleActivity.this);
-                    builder14.setIcon(R.drawable.ic_launcher_foreground);
-                    builder14.setTitle("收到群呼消息");
-                    View view14 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_rev_qunhu, null);
+                    builder14.setIcon(R.drawable.qunhu);
+                    builder14.setTitle("收到群呼");
+                    View view14 = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_xuanhuan_send, null);
                     builder14.setView(view14);
-                    TextView zhongduan14 = (TextView) view14.findViewById(R.id.zhongduanhao);
-                    TextView xindao14 = (TextView) view14.findViewById(R.id.xindaohao);
-                    zhongduan14.setText("主叫终端号："+data.substring(19,28));
-                    xindao14.setText("信道号："+Integer.parseInt(data.substring(28,32),16));
-                    kind_of_hujiao.setText("呼叫种类：群呼");
-                    hujiao_number.setVisibility(View.VISIBLE);
-                    hujiao_number.setText("对方船号："+data.substring(19,28));
+                    TextView titles = (TextView)view14.findViewById(R.id.xuanhutitle);
+                    EditText zhongduan14 = (EditText) view14.findViewById(R.id.zhongduanhao);
+                    EditText xindao14 = (EditText) view14.findViewById(R.id.xindaohao);
+                    TextView chuanwei1 = (TextView)view14.findViewById(R.id.chuanwei);
+                    titles.setText("收到群呼");
+                    zhongduan14.setText(data.substring(19,28));
+                    zhongduan14.setFocusable(false);
+                    int xd = Integer.parseInt(data.substring(28,32),16);
+                    String xds = String.valueOf(xd);
+                    if (xds.length() < 3) {
+                        xds = "0".concat(xds);
+                    }
+                    xindao14.setText(xds);
+                    xindao14.setFocusable(false);
+                    chuanwei1.setVisibility(View.GONE);
                     builder14.setNegativeButton("拒绝", new DialogInterface.OnClickListener() //不接串口设备不能在这里面写接收语句，否则会自发自收
                     {
                         @Override
@@ -3294,6 +3822,15 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     });
                     dialogtemp = builder14.create();
                     dialogtemp.show();
+                    Window w = dialogtemp.getWindow();
+                    w.setBackgroundDrawableResource(R.drawable.dialog_style);
+                    w.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
+                    WindowManager.LayoutParams q = dialogtemp.getWindow().getAttributes();
+                    q.width = 400;
+                    q.height = 300;
+                    q.dimAmount = 0.0f;
+                    dialogtemp.getWindow().setAttributes(q);
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     data="";// data使用完 清空
                     data_use=false;
                     break;
@@ -3331,6 +3868,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                         TextView tv_gpswd_rev = (TextView) view18.findViewById(R.id.tv_gpswd_rev);
                         TextView tv_msg = (TextView) view18.findViewById(R.id.tv_msg_rev);
                         TextView tv_time_rev = (TextView) view18.findViewById(R.id.tv_time_rev);
+                        duanxinimg.setVisibility(View.VISIBLE);
                         tv_number_rev.setText("终端号:"+data.substring(19,28));
                         String tempzhongduan=data.substring(19,28);
                         tv_gpsjd_rev.setText("经度:"+map01.get("jd"));
@@ -3383,6 +3921,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                 String CheckSum = GetCheckSum(CheckData);
                                 String data1 = GetSendData(CheckData, CheckSum);
                                 sendData(data1);
+                                duanxinimg.setVisibility(View.INVISIBLE);
                                 Intent intent01 = new Intent(SimpleActivity.this, message_show.class);
                                 intent01.putExtra("type","短信");
                                 intent01.putExtra("tv_msg_zhongduanhao","终端号:"+tempzhongduan);
@@ -3394,8 +3933,18 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                                 startActivity(intent01);
                             }
                         });
+
                         Dialog dialog01 = builder01.create();
                         dialog01.show();
+                        NavigationBarUtil.hideNavigationBar(dialog01.getWindow());
+                        final Timer t =new Timer();
+                        	                t.schedule(new TimerTask() {
+                            	                    public void run() {
+                                                        dialog01.dismiss();// when the task active then close thedialog
+                               	                        t.cancel();// also just top the timer thread,otherwise, you may receive a crash report
+                                	                    }
+                            	                },5000);// after 2second (or 2000 miliseconds), the task will be active.
+
                     }else if(msg_kind.equals("02")){
                         ToastUtil.showOne(this, "收到一条广告！");
                         switch(Adi){
@@ -3456,6 +4005,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     TextView tv_gpsjd_rev = (TextView) view18.findViewById(R.id.tv_gpsjd_rev);
                     TextView tv_gpswd_rev = (TextView) view18.findViewById(R.id.tv_gpswd_rev);
                     TextView tv_time_rev = (TextView) view18.findViewById(R.id.tv_time_rev);
+                    tupian.setVisibility(View.VISIBLE);
                     tv_number_rev.setText("终端号:"+data.substring(19,28));
                     String tempzhongduan=data.substring(19,28);
                     tv_gpsjd_rev.setText("经度:"+map01.get("jd"));
@@ -3506,6 +4056,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             String CheckSum = GetCheckSum(CheckData);
                             String data1 = GetSendData(CheckData, CheckSum);
                             sendData(data1);
+                            tupian.setVisibility(View.INVISIBLE);
                             Intent intent01 = new Intent(SimpleActivity.this, message_show.class);
                             intent01.putExtra("type","图片");
                             intent01.putExtra("tv_msg_zhongduanhao","终端号:"+tempzhongduan);
@@ -3522,6 +4073,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     });
                     Dialog dialog01 = builder01.create();
                     dialog01.show();
+                    NavigationBarUtil.hideNavigationBar(dialog01.getWindow());
+
                     break;
                 case "30":
                     ToastUtil.showOne(this, "设备内部通信错误，请重试！");
@@ -3558,21 +4111,31 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     data = "";
                     break;
                 case "1B"://全呼收
-                    if(dialogtemp!=null)
+                    if(dialogtemp!=null&&cmd_temp.equals("1B"))
                         break;
+                    qiehuan(true);
+                    cmd_temp = "1B";
                     AlertDialog.Builder builder1b = new AlertDialog.Builder(SimpleActivity.this);
-                    builder1b.setIcon(R.drawable.ring_icon);
                     builder1b.setTitle("收到全呼");
+                    builder1b.setIcon(R.drawable.quanhu);
                     View view1b = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_send_qiujiu, null);
+                    TextView tv_quanhu = (TextView)view1b.findViewById(R.id.qiujiutitle);
                     TextView tv_zhongduan1b = (TextView) view1b.findViewById(R.id.zhongduanhao);
+                    TextView hujiao1 = (TextView) view1b.findViewById(R.id.qiujiuhujiao);
+                    EditText xindaohao2 = (EditText)view1b.findViewById(R.id.xindaohao);
                     TextView tv_jingdu1b = (TextView) view1b.findViewById(R.id.jingdu);
                     TextView tv_weidu1b = (TextView) view1b.findViewById(R.id.weidu);
                     Map<String, String> map1b = GetGps(data.substring(28, 40),xiangxian,false);
                     String jd1b = map1b.get("jd");
                     String wd1b = map1b.get("wd");
+                    hujiao1.setText("呼叫成功");
+                    tv_quanhu.setText("收到全呼");
+                    xindaohao2.setText("223");
+                    xindaohao2.setFocusable(false);
                     tv_jingdu1b.setText(jd1b);
                     tv_weidu1b.setText(wd1b);
-                    tv_zhongduan1b.setText("来自终端号：" + data.substring(19, 28) + " 的呼叫");
+                    tv_zhongduan1b.setText(  data.substring(19, 28)  );
+                    tv_zhongduan1b.setFocusable(false);
 //                    kind_of_hujiao.setText("呼叫种类：气象");
 //                    hujiao_number.setVisibility(View.VISIBLE);
 //                    hujiao_number.setText("对方船号："+data.substring(19, 28));
@@ -3600,30 +4163,39 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
 //                    if (!dialog12.isShowing()) {
 //                        dialog12.show();
 //                    }
+                    Window window5 = dialogtemp.getWindow();
+                    window5.setBackgroundDrawableResource(R.drawable.dialog_style);
+                    window5.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
                     dialogtemp.show();
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     //sendTouchEvent(100, 100);
                     data_use = false;
                     data = "";
                     break;
                 case "1D"://海呼收
-                    if(dialogtemp!=null)
+                    if(dialogtemp!=null&&cmd_temp.equals("1D"))
                         break;
+                    qiehuan(true);
+                    cmd_temp = "1D";
                     AlertDialog.Builder builder1D = new AlertDialog.Builder(SimpleActivity.this);
-                    builder1D.setIcon(R.drawable.ring_icon);
-                    builder1D.setTitle("收到海呼");
-                    View view1D = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_rev_xuanhu, null);
+                    View view1D = LayoutInflater.from(SimpleActivity.this).inflate(R.layout.dialog_xuanhuan_send, null);
                     TextView zhongduanhao1D = (TextView) view1D.findViewById(R.id.zhongduanhao);
+                    TextView title = (TextView)view1D.findViewById(R.id.xuanhutitle);
                     TextView xindaohao1D = (TextView) view1D.findViewById(R.id.xindaohao);
-                    zhongduanhao1D.setText("终端号：" + data.substring(19, 28));
-                    int xindaohao2 = Integer.parseInt(data.substring(28, 32), 16);
-                    String xindao2 = String.valueOf(xindaohao2);
+                    TextView chuanwei = (TextView) view1D.findViewById(R.id.chuanwei);
+                    TextView hujiaochenggong  = (TextView)view1D.findViewById(R.id.xuanhuhujiao);
+                    chuanwei.setVisibility(View.GONE);
+                    title.setText("收到海呼");
+                    zhongduanhao1D.setText( data.substring(19, 28));
+                    zhongduanhao1D.setFocusable(false);
+                    int xindaohao3 = Integer.parseInt(data.substring(28, 32), 16);
+                    String xindao2 = String.valueOf(xindaohao3);
                     if (xindao2.length() < 3) {
                         xindao2 = "0".concat(xindao2);
                     }
-                    kind_of_hujiao.setText("呼叫种类：海呼");
-                    hujiao_number.setVisibility(View.VISIBLE);
-                    hujiao_number.setText("对方船号："+data.substring(19, 28));
-                    xindaohao1D.setText("信道号：" + xindao2);
+                    xindaohao1D.setText(xindao2);
+                    xindaohao1D.setFocusable(false);
+                    hujiaochenggong.setText("呼叫成功");
                     builder1D.setView(view1D);
                     builder1D.setOnKeyListener(new DialogInterface.OnKeyListener() {
                         @Override
@@ -3646,6 +4218,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     });
                     dialogtemp = builder1D.create();
                     dialogtemp.show();
+                    Window window4 = dialogtemp.getWindow();
+                    window4.setBackgroundDrawableResource(R.drawable.dialog_style);
+                    window4.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
+                    WindowManager.LayoutParams params2 = dialogtemp.getWindow().getAttributes();
+                    params2.width = 400;
+                    params2.dimAmount = 0.0f;
+                    dialogtemp.getWindow().setAttributes(params2);
+                    NavigationBarUtil.hideNavigationBar(dialogtemp.getWindow());
                     data_use = false;
                     data = "";
                     break;
@@ -3655,8 +4235,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     String stop = data.substring(22,24);
                     if(stop.equals("01")) {
                         Scan_flag = false;
-                        xingdaohao.setText(Integer.toString(xindao3));
+                        String s = Integer.toString(xindao3);
+                        while (s.length() < 3) {
+                            s = "0".concat(s);
+                        }
+                        xingdaohao.setText("信道号:" + s);
                         saomiao.setText("扫描停止");
+                        if(radarView!=null)
+                            radarView.saomiaostop();
                     }
                     break;
                 default:
@@ -3665,6 +4251,62 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         }
 
     }  //从getMessage()方法获取串口接收数据，后续进行处理
+
+    private void deleteship(String key) {
+        if(posmap.containsKey(key))
+        {
+            JSONObject para = new JSONObject();
+            try {
+                para.put("pos", posmap.get(key));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            String p = para.toString();
+            String js = "javascript:" + "delete_ship" + "(" + p + ")";
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                webView.evaluateJavascript(js, new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String value) {
+                        //此处为 js 返回的结果
+                    }
+                });
+            }
+        }
+    }
+
+    private void addship(String jdsa, String wdsa, String haihuhujiao) {
+        int a = Integer.parseInt(jdsa.substring(0, 3));
+        double b = (double) Integer.parseInt(jdsa.substring(3, 5))/60;
+        double c = (double)Integer.parseInt(jdsa.substring(5, 7))/3600;
+        int d = Integer.parseInt(wdsa.substring(0, 2));
+        double f = (double) Integer.parseInt(wdsa.substring(2, 4))/60;
+        double g = (double)Integer.parseInt(wdsa.substring(4, 6))/3600;
+        int j = 1;
+        while (posmap.containsValue(j))
+            j++;
+        posmap.put(haihuhujiao,j);
+        JSONObject para = new JSONObject();
+        try {
+            para.put("x",a+b+c);
+            para.put("y",d+f+g) ;
+            para.put("pos", j);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        String p = para.toString();
+        String js = "javascript:" + "add_ship" + "(" + p + ")";
+        if(haihuhujiao.equals("qiujiu"))
+            js = "javascript:" + "add_sos" + "(" + p + ")";
+        Log.i("addship",js);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            webView.evaluateJavascript(js, new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    //此处为 js 返回的结果
+                }
+            });
+        }
+    }
 
     private String unicodeToString(String unicode) {
         StringBuffer string = new StringBuffer();
@@ -4292,6 +4934,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         Settings.System.putInt(contentResolver,
                 Settings.System.SCREEN_BRIGHTNESS, birghtessValue);
     }
+
 
     public class Mythread implements Runnable{
         @Override

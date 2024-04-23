@@ -19,12 +19,15 @@ import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.TextWatcher;
+import android.text.method.ReplacementTransformationMethod;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodInfo;
@@ -38,12 +41,14 @@ import com.d.commenplayer.R;
 import com.d.commenplayer.comn.Device;
 import com.d.commenplayer.comn.message.IMessage;
 import com.d.commenplayer.comn.message.SerialPortManager;
+import com.d.commenplayer.util.NavigationBarUtil;
 import com.d.commenplayer.util.ToastUtil;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import java.lang.ref.WeakReference;
+import java.nio.CharBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,15 +67,21 @@ public class SendMessageActivity extends AppCompatActivity {
     private boolean lianxiren = false;
 
     private boolean caplook = false;
+
+    private boolean suiyiflag = false;
     private MyHandle myHandle = new MyHandle(this);
     private TextView languagee;
     private boolean[] isdelay = new boolean[14];
     private boolean issend = false;
     private int last_keydown = 0;
     private int last_messagecode = 0;
+
+    private int start_temp ;
     private int[] countarray = new int[14];
     private Timer timer;
     private MsgRevDao dao;
+
+    private ContactsDao dao2;
     private boolean isRunning;
     private boolean mOpened = false;
     private Device mDevice;
@@ -82,6 +93,7 @@ public class SendMessageActivity extends AppCompatActivity {
 
     private EditText shoujianren;
 
+    private Editable editable;
     private CustomEditText xinxineirong;
 
     private Button danfa;
@@ -105,6 +117,10 @@ public class SendMessageActivity extends AppCompatActivity {
     private String shortmessage_string;
 
     private String lianxirenzhongduan;
+
+    private CharSequence charSequence;
+
+    private List<MsgInfo> datalist;
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -534,6 +550,38 @@ public class SendMessageActivity extends AppCompatActivity {
             builder.setView(view);
             shoujianren = view.findViewById(R.id.shoujianren);
             xinxineirong = view.findViewById(R.id.duanxinneirong);
+
+            xinxineirong.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if(caplook)
+                    {
+                        if(suiyiflag) {
+                            suiyiflag = false;
+                            return;
+                        }
+                        if(count!=0)
+                        {
+                                char[] chars= {Character.toUpperCase(s.charAt(start + i))};
+                                charSequence = new String(chars);
+                                start_temp = start;
+                                Message msg = new Message();
+                                msg.what = 1;
+                                send_handler.sendMessage(msg);
+                        }
+                    }
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+
+                }
+            });
             shoujianren.setText(address.getText());
             xinxineirong.setText(shortmessage.getText());
             Log.i("TAG","dispatchKeyEvent"+event.getKeyCode());
@@ -599,9 +647,9 @@ public class SendMessageActivity extends AppCompatActivity {
                             f5.setText("发件箱");
                             if(caplook)
                             {
-                                Message message = new Message();
-                                message.what = 14;
-                                myHandle.sendMessage(message);
+//                                Message message = new Message();
+//                                message.what = 14;
+//                                myHandle.sendMessage(message);
                                 caplook = false;
                             }
                             xinxineirong.clearFocus();
@@ -623,9 +671,9 @@ public class SendMessageActivity extends AppCompatActivity {
                     f5.setText("发件箱");
                     if(caplook)
                     {
-                        Message message = new Message();
-                        message.what = 14;
-                        myHandle.sendMessage(message);
+//                        Message message = new Message();
+//                        message.what = 14;
+//                        myHandle.sendMessage(message);
                         caplook = false;
                     }
                     xinxineirong.clearFocus();
@@ -803,8 +851,9 @@ public class SendMessageActivity extends AppCompatActivity {
                         fuhao_flag = false;
                         if(caplook)
                         {
+                            count_changlanguage = 2;
                             Message message = new Message();
-                            message.what = 14;
+                            message.what = 13;
                             myHandle.sendMessage(message);
                             caplook = false;
                         }
@@ -833,9 +882,9 @@ public class SendMessageActivity extends AppCompatActivity {
                         fuhao_flag = false;
                         if(caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+//                            Message message = new Message();
+//                            message.what = 14;
+//                            myHandle.sendMessage(message);
                             caplook = false;
                         }
                         if(count_changlanguage!=0) {
@@ -856,9 +905,23 @@ public class SendMessageActivity extends AppCompatActivity {
                         fuhao_flag =false;
                         if(!caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+                            if(count_changlanguage==2)
+                            {
+                                Message message = new Message();
+                                message.what = 13;
+                                myHandle.sendMessage(message);
+                                count_changlanguage = 1;
+                            }
+                            if(count_changlanguage==0)
+                            {
+                                if(languagee_temp.equals("中文"))
+                                {
+                                    Message message = new Message();
+                                    message.what = 13;
+                                    myHandle.sendMessage(message);
+                                    count_changlanguage = 1;
+                                }
+                            }
                             caplook = true;
                         }
                         flag_number = false;
@@ -868,9 +931,9 @@ public class SendMessageActivity extends AppCompatActivity {
                         fuhao_flag = false;
                         if(caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+//                            Message message = new Message();
+//                            message.what = 14;
+//                            myHandle.sendMessage(message);
                             caplook = false;
                         }
                         if(count_changlanguage==0) {
@@ -912,6 +975,7 @@ public class SendMessageActivity extends AppCompatActivity {
 
         });
             xinxineirong.dialog = builder.show();
+            NavigationBarUtil.hideNavigationBar(xinxineirong.dialog.getWindow());
         }
         if(event.getKeyCode() == 51&& event.getAction() == KeyEvent.ACTION_UP)
         {
@@ -1008,9 +1072,9 @@ public class SendMessageActivity extends AppCompatActivity {
                             f5.setText("发件箱");
                             if(caplook)
                             {
-                                Message message = new Message();
-                                message.what = 14;
-                                myHandle.sendMessage(message);
+//                                Message message = new Message();
+//                                message.what = 14;
+//                                myHandle.sendMessage(message);
                                 caplook = false;
                             }
                             xinxineirong.clearFocus();
@@ -1031,9 +1095,9 @@ public class SendMessageActivity extends AppCompatActivity {
                     f5.setText("发件箱");
                     if(caplook)
                     {
-                        Message message = new Message();
-                        message.what = 14;
-                        myHandle.sendMessage(message);
+//                        Message message = new Message();
+//                        message.what = 14;
+//                        myHandle.sendMessage(message);
                         caplook = false;
                     }
                     xinxineirong.clearFocus();
@@ -1048,21 +1112,22 @@ public class SendMessageActivity extends AppCompatActivity {
                     if (keyCode == 45 && event.getAction() == KeyEvent.ACTION_UP ){
                         String gbk;
                         String zhongduan= shoujianren.getText().toString();
-                        if(zhongduan.length()!=9){
-                            ToastUtile.showText(SendMessageActivity.this, "终端号输入错误！信息发送失败！");
+                        if(zhongduan.length()!=6){
+                            ToastUtile.showText(SendMessageActivity.this, "群号输入错误！信息发送失败！");
                         }else {
                             send_state = 0;
+
                             gbk = stringToUnicode(xinxineirong.getText().toString());
                             int len=gbk.length()/2+1;
                             String msglen=Integer.toHexString(len).toUpperCase();
-                            String Length=Integer.toHexString(len+10).toUpperCase();
+                            String Length=Integer.toHexString(len+8).toUpperCase();
                             while (Length.length()<4){
                                 Length="0".concat(Length);
                             }
                             while (msglen.length()<4){
                                 msglen="0".concat(msglen);
                             }
-                            String CheckData="01B3"+Length+"2F"+"0"+zhongduan+msglen+kind+gbk;
+                            String CheckData="01B3"+Length+"2E"+zhongduan+msglen+kind+gbk;
                             Log.i("TAG", "CheckData:"+CheckData);
                             String CheckSum=GetCheckSum(CheckData);
                             SendData=GetSendData(CheckData,CheckSum);
@@ -1070,6 +1135,39 @@ public class SendMessageActivity extends AppCompatActivity {
                             sendData(SendData);
                             address_string = shoujianren.getText().toString();
                             shortmessage_string = xinxineirong.getText().toString();
+                            AlertDialog.Builder builder = new AlertDialog.Builder(SendMessageActivity.this);
+                            builder.setIcon(R.drawable.email);
+                            builder.setTitle("正在发送...");
+                            View view = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_tishi, null);
+                            builder.setView(view);
+
+                            builder.setNegativeButton("取消",
+                                    new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+
+                                        }
+                                    });
+                            builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                                @Override
+                                public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                                    if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                                        Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                                        btn_neg.performClick(); //点击取消
+                                    }
+                                    return false;
+                                }}
+                            );
+
+                            Dialog dialog1 = builder.create();
+                            dialog1.show();
+                            dialogtemp = dialog1;
+                            WindowManager.LayoutParams params22 = dialog1.getWindow().getAttributes();
+                            params22.width = 400;
+                            params22.height = 200;
+                            dialog1.getWindow().setAttributes(params22);
+                            NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
+                            data="";
                         }
                         Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
                         btn_pos.performClick(); //点击确定
@@ -1209,9 +1307,9 @@ public class SendMessageActivity extends AppCompatActivity {
                         fuhao_flag = false;
                         if(caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+//                            Message message = new Message();
+//                            message.what = 14;
+//                            myHandle.sendMessage(message);
                             caplook = false;
                         }
                         if(count_changlanguage==1) {
@@ -1239,9 +1337,9 @@ public class SendMessageActivity extends AppCompatActivity {
                         fuhao_flag = false;
                         if(caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+//                            Message message = new Message();
+//                            message.what = 14;
+//                            myHandle.sendMessage(message);
                             caplook = false;
                         }
                         if(count_changlanguage!=0) {
@@ -1260,23 +1358,22 @@ public class SendMessageActivity extends AppCompatActivity {
                     }
                     if (keyCode == 213 && event.getAction() == KeyEvent.ACTION_UP) {
                         fuhao_flag =false;
+                        flag_number = false;
                         if(!caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+//                            Message message = new Message();
+//                            message.what = 14;
+//                            myHandle.sendMessage(message);
                             caplook = true;
                         }
-                        flag_number = false;
-                        fuhao_flag = false;
                     }
                     if (keyCode == 218 && event.getAction() == KeyEvent.ACTION_UP) {
                         fuhao_flag = false;
                         if(caplook)
                         {
-                            Message message = new Message();
-                            message.what = 14;
-                            myHandle.sendMessage(message);
+//                            Message message = new Message();
+//                            message.what = 14;
+//                            myHandle.sendMessage(message);
                             caplook = false;
                         }
                         if(count_changlanguage==0) {
@@ -1318,6 +1415,7 @@ public class SendMessageActivity extends AppCompatActivity {
 
             });
             xinxineirong.dialog = builder.show();
+            NavigationBarUtil.hideNavigationBar(xinxineirong.dialog.getWindow());
         }
         if(event.getKeyCode() == 48&& event.getAction() == KeyEvent.ACTION_UP)
         {
@@ -1736,7 +1834,12 @@ public class SendMessageActivity extends AppCompatActivity {
                         }
                         break;
                     case 14:
-                            sendKeyCode(KeyEvent.KEYCODE_CAPS_LOCK);
+                        new Thread(){
+                            @Override
+                            public void run() {
+                                sendKeyCode(KeyEvent.KEYCODE_CAPS_LOCK);
+                            }
+                        }.start();
                         break;
                 }
             }
@@ -1762,6 +1865,10 @@ public class SendMessageActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_send_message);
+        Window globle_window = getWindow();
+        WindowManager.LayoutParams params = globle_window.getAttributes();
+        params.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE;
+        globle_window.setAttributes(params);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         languagee=findViewById(R.id.show_language);
         address = findViewById(R.id.number_address);
@@ -1774,6 +1881,7 @@ public class SendMessageActivity extends AppCompatActivity {
         dao=new MsgRevDao(this);
         xinxineirong = new CustomEditText(this);
         shoujianren = new EditText(this);
+
 
         Intent intent = getIntent();
         count_changlanguage= Integer.valueOf(intent.getStringExtra("count_changlanguage"));
@@ -1832,7 +1940,6 @@ public class SendMessageActivity extends AppCompatActivity {
         });//为EditText添加获得焦点时的事件
 
 
-
         if(intent.getStringExtra("ZHONGDUANHAO")!=null){
             address.setText(intent.getStringExtra("ZHONGDUANHAO"));
         }
@@ -1882,11 +1989,18 @@ public class SendMessageActivity extends AppCompatActivity {
                         count=0;
                     }
                     break;
+                case 1:
+                    editable = xinxineirong.getEditableText();
+                    suiyiflag = true;
+                    editable.replace(start_temp ,start_temp+1,charSequence);
+                    break;
                 default:
                     break;
             }
         }
     };
+
+    private Dialog dialogtemp;
     @Subscribe(threadMode = ThreadMode.MAIN) //675 440  740 450
     public void onMessageEvent(IMessage message) {
         Map<String, Object> map = Serial_Manage(message.getMessage(), temp, data, data_use);
@@ -1905,8 +2019,27 @@ public class SendMessageActivity extends AppCompatActivity {
                     View view = LayoutInflater.from(SendMessageActivity.this).inflate(R.layout.dialog_tishi, null);
                     builder.setView(view);
 
+                    builder.setNegativeButton("取消",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                }
+                            });
+                    builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                        @Override
+                        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                            if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
+                                Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
+                                btn_neg.performClick(); //点击取消
+                            }
+                            return false;
+                        }}
+                    );
+
                     Dialog dialog1 = builder.create();
                     dialog1.show();
+                    dialogtemp = dialog1;
                     WindowManager.LayoutParams params22 = dialog1.getWindow().getAttributes();
                     params22.width = 400;
                     params22.height = 200;
@@ -1922,27 +2055,19 @@ public class SendMessageActivity extends AppCompatActivity {
                     tv.setText("网络忙，请稍后重试");
                     builder1.setView(view1);
 
-                    builder1.setNegativeButton("取消",
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-
-                                }
-                            });
                     builder1.setPositiveButton("确定",
                             new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-
+                                    if(dialogtemp!=null)
+                                    {
+                                        dialogtemp.dismiss();
+                                    }
                                 }
                             });
                     builder1.setOnKeyListener(new DialogInterface.OnKeyListener() {
                         @Override
                         public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-                            if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
-                                Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
-                                btn_neg.performClick(); //点击取消
-                            }
                             if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                                 Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
                                 btn_pos.performClick(); //点击确定
@@ -1956,6 +2081,7 @@ public class SendMessageActivity extends AppCompatActivity {
                     params23.width = 600;
                     params23.height = 200;
                     dialog2.getWindow().setAttributes(params23);
+
                     data="";
                     //MsgInfo msginfopre29=new MsgInfo(-1,address.getText().toString(),shortmessage.getText().toString()," "," "," "," ",3);
                     //dao.add(msginfopre29);
@@ -1970,28 +2096,20 @@ public class SendMessageActivity extends AppCompatActivity {
                     tv1.setText("发送失败！");
                     builder2.setView(view2);
 
-                    builder2.setNegativeButton("取消",
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-
-                                }
-                            });
                     builder2.setPositiveButton("确定",
                             new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-
+                                    if(dialogtemp!=null)
+                                    {
+                                        dialogtemp.dismiss();
+                                    }
                                 }
                             });
 
                     builder2.setOnKeyListener(new DialogInterface.OnKeyListener() {
                       @Override
                       public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-                          if (keyCode == 216 && event.getAction() == KeyEvent.ACTION_UP) {
-                              Button btn_neg = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_NEGATIVE);
-                              btn_neg.performClick(); //点击取消
-                          }
                           if (keyCode == 215 && event.getAction() == KeyEvent.ACTION_UP) {
                               Button btn_pos = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
                               btn_pos.performClick(); //点击确定
@@ -2042,6 +2160,10 @@ public class SendMessageActivity extends AppCompatActivity {
 
                         break;
                     case "29":
+                        if(dialogtemp!=null)
+                        {
+                            dialogtemp.dismiss();
+                        }
                         ToastUtile.showText(this, "网络忙,请稍后重试。。。");
                         //MsgInfo msginfopre29=new MsgInfo(-1,address.getText().toString(),shortmessage.getText().toString()," "," "," "," ",3);
                         //dao.add(msginfopre29);
@@ -2049,6 +2171,10 @@ public class SendMessageActivity extends AppCompatActivity {
                         break;
                     case "2B":
                         ToastUtile.showText(this, "短信群发失败！");
+                        if(dialogtemp!=null)
+                        {
+                            dialogtemp.dismiss();
+                        }
                         MsgInfo msginfopre=new MsgInfo(-1,address_string,shortmessage_string," "," "," "," ",3,0);
                         dao.add(msginfopre);
                         data="";

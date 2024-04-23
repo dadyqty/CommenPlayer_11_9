@@ -4,18 +4,31 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <TextView
+        android:id="@+id/xuanhutitle"
+        android:layout_marginTop="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="选 呼"
+        android:layout_gravity="center"
+        android:textSize="40dp"
+        android:textColor="@color/black"
+        />
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:layout_marginLeft="50dp"
+        android:layout_marginRight="50dp"
         >
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="船台号："
-            android:textSize="20dp"
+            android:textSize="25dp"
             android:textColor="@color/black"
-            android:layout_weight="2"
+            android:layout_weight="3"
             ></TextView>
 
         <EditText
@@ -25,6 +38,8 @@
             android:layout_weight="5"
             android:hint="输入电台号"
             android:inputType="number"
+            android:theme="@style/MyEditTextStyle"
+            android:textSize="25dp"
             android:maxLength="9"
             android:text="412888881" />
     </LinearLayout>
@@ -33,37 +48,42 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:layout_marginLeft="50dp"
+        android:layout_marginRight="50dp"
         >
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="2"
+            android:layout_weight="3"
             android:text="信道号："
-            android:textSize="20dp"
+            android:textSize="25dp"
             android:textColor="@color/black"
             ></TextView>
         <EditText
             android:id="@+id/xindaohao"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:textSize="25dp"
             android:layout_weight="5"
             android:maxLength="3"
-            android:inputType="number"
+            android:theme="@style/MyEditTextStyle"
             android:text=""
-            android:hint="输入信道号"/>
+            android:hint=""/>
     </LinearLayout>
 
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="50dp"
+        android:layout_marginRight="50dp"
         android:orientation="horizontal">
         <TextView
             android:id="@+id/chuanwei"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:textSize="20dp"
+            android:layout_weight="3"
+            android:textSize="25dp"
             android:textColor="@color/black"
             android:text="船位:"/>
         <TextView
@@ -72,18 +92,33 @@
             android:layout_height="wrap_content"
             android:layout_weight="5"
             android:textColor="@color/black"
-            android:textSize="20dp"
+            android:textSize="25dp"
             android:text=""/>
     </LinearLayout>
-    <TextView
-        android:id="@+id/weidu"
-        android:layout_marginLeft="115dp"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/black"
-        android:textSize="20dp"
-        android:layout_below="@id/jindu"
-        android:text=""/>
+        android:layout_marginLeft="50dp"
+        android:layout_marginRight="50dp"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="3"
+            android:textSize="20dp"
+            android:textColor="@color/black"
+            android:visibility="invisible"
+            android:text="船位:"/>
+        <TextView
+            android:id="@+id/weidu"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="5"
+            android:textColor="@color/black"
+            android:textSize="25dp"
+            android:layout_below="@id/jindu"
+            android:text=""/>
+    </LinearLayout>
 
     <TextView
         android:id="@+id/xuanhuhujiao"
@@ -92,7 +127,7 @@
         android:layout_marginTop="20dp"
         android:layout_below="@id/weidu"
         android:gravity="center"
-        android:textSize="25dp"
+        android:textSize="30dp"
         android:text=""/>
 
 </LinearLayout>

@@ -1,32 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="match_parent">
 
-
-    <EditText
-        android:id="@+id/qunhuhao"
+    <TextView
+        android:layout_marginTop="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="群 呼"
+        android:layout_gravity="center"
+        android:textSize="40dp"
+        android:textColor="@color/black"
+        />
+    <LinearLayout
+        android:layout_marginTop="20dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:inputType="number"
-        android:maxLength="6"
-        android:hint="输入群呼号"/>
+        android:layout_gravity="center"
+        >
+        <TextView
+            android:layout_marginLeft="50dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="群号:"
+            android:layout_gravity="center"
+            android:textSize="30dp"
+            android:textColor="@color/black"
+            >
+        </TextView>
+        <EditText
+            android:id="@+id/qunhuhao"
+            android:layout_marginRight="50dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:theme="@style/MyEditTextStyle"
+            android:textSize="30dp"
+            android:hint="请输入群号"/>
+    </LinearLayout>
 
-    <EditText
-        android:id="@+id/xindaohao"
-        android:layout_below="@+id/qunhuhao"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="number"
-        android:hint="输入信道号"/>
 
     <TextView
         android:id="@+id/qunhuhhujiao"
-        android:layout_below="@+id/xindaohao"
+        android:layout_marginTop="30dp"
+        android:layout_below="@+id/qunhuhao"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:textSize="25dp" />
 
-
-</RelativeLayout>
+</LinearLayout>

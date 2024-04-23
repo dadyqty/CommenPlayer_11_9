@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="1.0px"
+    android:insetRight="1.0px" >
+
+    <selector>
+        <item android:state_pressed="true">
+            <shape>
+                <gradient
+                    android:angle="270.0"
+                    android:endColor="#00a8ff"
+                    android:startColor="#0084c8" />
+
+                <corners
+                    android:bottomLeftRadius="5.0dip"
+                    android:bottomRightRadius="0dip"
+                    android:topLeftRadius="5.0dip"
+                    android:topRightRadius="0dip" />
+            </shape>
+        </item>
+        <item>
+            <shape>
+                <gradient
+                    android:angle="270.0"
+                    android:endColor="#0084c8"
+                    android:startColor="#00a8ff" />
+
+                <corners
+                    android:bottomLeftRadius="5.0dip"
+                    android:bottomRightRadius="0dip"
+                    android:topLeftRadius="5.0dip"
+                    android:topRightRadius="0dip" />
+            </shape>
+        </item>
+    </selector>
+    <selector>
+        <item
+            android:state_pressed="false"
+            android:color="@color/colorBlue">
+            <shape>
+                <gradient
+                    android:angle="270.0"
+                    android:endColor="#0084c8"
+                    android:startColor="#00a8ff" />
+
+                <corners
+                    android:bottomLeftRadius="5.0dip"
+                    android:bottomRightRadius="0dip"
+                    android:topLeftRadius="5.0dip"
+                    android:topRightRadius="0dip" />
+            </shape>
+        </item>
+        <item>
+            <shape>
+                <gradient
+                    android:angle="270.0"
+                    android:endColor="#0084c8"
+                    android:startColor="#00a8ff" />
+
+                <corners
+                    android:bottomLeftRadius="5.0dip"
+                    android:bottomRightRadius="0dip"
+                    android:topLeftRadius="5.0dip"
+                    android:topRightRadius="0dip" />
+            </shape>
+        </item>
+    </selector>
+
+</inset>

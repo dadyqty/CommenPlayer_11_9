@@ -26,4 +26,12 @@
 
     </style>
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <style name="MyEditTextStyle">
+        <!--文本的颜色，textColor和textSize不要放到style中-->
+        <item name="android:textColorHint">@color/warm_gray</item>
+        <item name="colorControlNormal">@color/warm_gray</item>
+        <item name="colorControlActivated">@color/warm_red</item>
+    </style>
+
+
 </resources>

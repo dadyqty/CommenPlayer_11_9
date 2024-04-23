@@ -3,10 +3,41 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="群号设置"
+        android:layout_gravity="center"
+        android:textSize="50dp"
+        android:textColor="@color/black"
+        >
+    </TextView>
+<LinearLayout
+    android:layout_marginTop="20dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    >
+    <TextView
+        android:layout_marginLeft="50dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="群号:"
+        android:layout_gravity="center"
+        android:textSize="30dp"
+        android:textColor="@color/black"
+        >
+    </TextView>
     <EditText
         android:id="@+id/et_setqunhao"
+        android:layout_marginRight="50dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="30dp"
+        android:theme="@style/MyEditTextStyle"
         android:hint="请输入群号"/>
+</LinearLayout>
 
 </LinearLayout>

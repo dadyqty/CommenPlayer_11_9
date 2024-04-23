@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
@@ -23,12 +24,14 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.ValueCallback;
 import android.widget.AbsListView;
@@ -36,6 +39,7 @@ import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,6 +52,7 @@ import com.d.commenplayer.adapter.ContactsAdapter;
 import com.d.commenplayer.comn.Device;
 import com.d.commenplayer.comn.message.IMessage;
 import com.d.commenplayer.comn.message.SerialPortManager;
+import com.d.commenplayer.util.NavigationBarUtil;
 import com.d.commenplayer.util.ToastUtil;
 
 import java.lang.ref.WeakReference;
@@ -81,6 +86,7 @@ public class ContactsActivity extends Activity {
     private ListView lv_main;
     private Button add;
     private TextView tv_empty;
+    private EditText xuanhuxindao;
     private List<ContactsInfo> data;
 
     private boolean data_use = false;
@@ -88,6 +94,8 @@ public class ContactsActivity extends Activity {
     private boolean send_success=false;
 
     private boolean hujiaofault = false;
+
+    private boolean running = false;
     private int position;
     private ContactsDao dao;
     private ContactsInfoAdapter adapter;
@@ -124,6 +132,10 @@ public class ContactsActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_contacts);
         add=findViewById(R.id.add);
+        Window globle_window = getWindow();
+        WindowManager.LayoutParams params = globle_window.getAttributes();
+        params.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE;
+        globle_window.setAttributes(params);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         lv_main = (ListView) findViewById(R.id.lv_main);
@@ -324,8 +336,8 @@ public class ContactsActivity extends Activity {
         final EditText et_name=update_view.findViewById(R.id.et_name);
         final EditText et_number=update_view.findViewById(R.id.et_number);
         final TextView languagee=update_view.findViewById(R.id.show_language);
-        et_name.setHint(contactsInfo.getName());
-        et_number.setHint(contactsInfo.getNumber());
+        et_name.setText(contactsInfo.getName());
+        et_number.setText(contactsInfo.getNumber());
         et_number.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
@@ -829,6 +841,7 @@ public class ContactsActivity extends Activity {
         params.width=400;
         params.height=260;
         dialog_update.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog_update.getWindow());
     }
     private String GetCheckSum(String CheckData) {
         StringBuilder Builder = new StringBuilder();
@@ -1349,6 +1362,7 @@ public class ContactsActivity extends Activity {
         params.width=400;
         params.height=260;
         dialog_add.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog_add.getWindow());
     }
 
 
@@ -1810,14 +1824,11 @@ public class ContactsActivity extends Activity {
     private void xuanhu(ContactsInfo contactsInfo)
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(ContactsActivity.this);
-        builder.setIcon(R.drawable.bohao);
-        builder.setTitle("选呼");
         View view = LayoutInflater.from(ContactsActivity.this).inflate(R.layout.dialog_xuanhuan_send, null);
         builder.setView(view);
         EditText zhongduanhao = (EditText) view.findViewById(R.id.zhongduanhao);
-        EditText xindaohao = (EditText) view.findViewById(R.id.xindaohao);
+        xuanhuxindao = (EditText) view.findViewById(R.id.xindaohao);
         zhongduanhao.setText(contactsInfo.getNumber());
-        xindaohao.setText("100");
         builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
@@ -1876,16 +1887,17 @@ public class ContactsActivity extends Activity {
                     throw new RuntimeException(e);
                 }
 
+                if(running)
+                {
+                    ToastUtil.show(ContactsActivity.this,"当前通话未结束！");
+                    return;
+                }
+
                 if (zhongduanhao.getText().toString().length() < 9) {
                     ToastUtil.show(ContactsActivity.this, "输入错误");
                 } else {
                     String a = zhongduanhao.getText().toString();
-                    String b = xindaohao.getText().toString();
-                    b = Integer.toHexString(Integer.parseInt(b));
-                    while (b.length() < 4) {
-                        b = "0".concat(b);
-                    }
-                    String CheckData = "01B3000A16" + "0" + a + b;
+                    String CheckData = "01B3000816" + "0" + a ;
                     String CheckSum = GetCheckSum(CheckData);
 //                                ToastUtil.show(SimpleActivity.this, "电台号: " + a + ", 信道号: " + b);
                     xuanhuhujiao = (TextView) view.findViewById(R.id.xuanhuhujiao);
@@ -1911,7 +1923,12 @@ public class ContactsActivity extends Activity {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-
+                if(running)
+                {
+                    running=false;
+                    ToastUtil.show(ContactsActivity.this,"通话挂断！");
+                    return;
+                }
                 String CheckData = "01B3000325";
                 String CheckSum = GetCheckSum(CheckData);
                 String data = GetSendData(CheckData, CheckSum);
@@ -1919,14 +1936,42 @@ public class ContactsActivity extends Activity {
 //                            ToastUtil.show(SimpleActivity.this, "取消选呼");
             }
         });
-        Dialog dialog1 = builder.create();
+        AlertDialog dialog1 = builder.create();
         dialog1.show();
+        Button positiveButton = dialog1.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negativeButton = dialog1.getButton(AlertDialog.BUTTON_NEGATIVE);
+        LinearLayout.LayoutParams positiveParams =(LinearLayout.LayoutParams)positiveButton.getLayoutParams();
+        positiveParams.gravity = Gravity.CENTER;
+        positiveParams.setMargins(10,10,10,10);
+        positiveParams.width = 0;
+        // 安卓下面有三个位置的按钮，默认权重为 1,设置成 500或更大才能让两个按钮看起来均分
+        positiveParams.weight = 500;
+        LinearLayout.LayoutParams negativeParams =(LinearLayout.LayoutParams)negativeButton.getLayoutParams();
+        negativeParams.gravity = Gravity.CENTER;
+        negativeParams.setMargins(10,10,10,10);
+        negativeParams.width = 0;
+        negativeParams.weight = 500;
+        negativeButton.setLayoutParams(positiveParams);
+        negativeButton.setLayoutParams(negativeParams);
+        positiveButton.setBackgroundColor(Color.parseColor("#FF733E"));
+        positiveButton.setTextColor(Color.parseColor("#FFFFFF"));
+        negativeButton.setBackgroundColor(Color.parseColor("#DDDDDD"));
+        negativeButton.setTextColor(Color.parseColor("#000000"));
+        Window window = dialog1.getWindow();
+        window.setBackgroundDrawableResource(R.drawable.dialog_style);
+        window.setLayout(this.getResources().getDisplayMetrics().widthPixels*2/3, 400);
         WindowManager.LayoutParams params = dialog1.getWindow().getAttributes();
+        params.gravity = Gravity.BOTTOM|Gravity.RIGHT;
+        params.x = 50;
+        params.y = 50;
         params.width = 400;
-        params.height = 350;
+        params.height = 370;
+        params.dimAmount = 0.0f;
         dialog1.getWindow().setAttributes(params);
+        NavigationBarUtil.hideNavigationBar(dialog1.getWindow());
         Button btn_pos = ((AlertDialog) dialog1).getButton(AlertDialog.BUTTON_POSITIVE);
         btn_pos.performClick(); //点击确定
+
     }
     private StringBuilder temp = new StringBuilder(); //临时缓存的字符串
     @Subscribe(threadMode = ThreadMode.MAIN) //675 440  740 450
@@ -1939,9 +1984,16 @@ public class ContactsActivity extends Activity {
                 String cmd = data.substring(16, 18);
                 switch (cmd) {
                     case "35":
+                        running=true;
                         xuanhuhujiao.setText("呼叫成功！");
                         data = "";// data使用完 清空
                         data_use = false;
+                        break;
+                    case "30":
+                        ToastUtil.showOne(this, "设备内部通信错误，请重试！");
+                        sendKeyCode(216);
+                        data_use = false;
+                        data = "";
                         break;
                     case "29":
                         xuanhuhujiao.setText("呼叫失败！");
@@ -1957,6 +2009,19 @@ public class ContactsActivity extends Activity {
                         xuanhuhujiaojd.setText(jd34);
                         xuanhuhujiaowd.setText(wd34);
                     break;
+                    case "99":  //信道号
+                        String s99 = data.substring(19, 22);
+                        int i = Integer.parseInt(s99, 16);
+                        s99 = String.valueOf(i);
+                        while (s99.length() < 3) {
+                            s99 = "0".concat(s99);
+                        }
+                        if(xuanhuxindao!=null) {
+                            xuanhuxindao.setText(s99);
+                        }
+                        data = "";// data使用完 清空
+                        data_use = false;
+                        break;
                     default:
                         break;
                 }

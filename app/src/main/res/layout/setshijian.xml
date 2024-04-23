@@ -24,6 +24,7 @@
         android:layout_height="wrap_content"
         android:maxLength="4"
         android:inputType="number"
+        android:theme="@style/MyEditTextStyle"
         android:textSize="30dp"
         android:hint="年"/>
         <TextView
@@ -37,6 +38,7 @@
             android:id="@+id/shijianyue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:theme="@style/MyEditTextStyle"
             android:maxLength="2"
             android:inputType="number"
             android:textSize="30dp"
@@ -52,6 +54,7 @@
             android:id="@+id/shijianri"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:theme="@style/MyEditTextStyle"
             android:maxLength="2"
             android:inputType="number"
             android:textSize="30dp"
@@ -77,12 +80,14 @@
             android:layout_height="wrap_content"
             android:maxLength="2"
             android:inputType="number"
+            android:theme="@style/MyEditTextStyle"
             android:textSize="30dp"
             android:hint="时"/>
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="时"
+
             android:textSize="30dp"
             android:textColor="@color/black"
             />
@@ -91,6 +96,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:maxLength="2"
+            android:theme="@style/MyEditTextStyle"
             android:inputType="number"
             android:textSize="30dp"
             android:hint="分"/>
@@ -106,6 +112,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:maxLength="2"
+            android:theme="@style/MyEditTextStyle"
             android:inputType="number"
             android:textSize="30dp"
             android:hint="秒"/>
