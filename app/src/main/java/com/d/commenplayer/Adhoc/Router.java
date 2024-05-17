@@ -14,18 +14,20 @@ import java.util.concurrent.*;
  * @date 2024-03-04 18:50:54
  */
 public class Router {
-    private String routerName; // 路由器名称
+    private String zhongduanhao; // 路由器名称
     private Map<Network, RouteTableEntry> routingTable; // 路由表
+
+    private Map<String,Network> networkMap; //名字网络对应表
     private List<Router> neighbors; // 相邻路由器列表
-    private ScheduledExecutorService scheduler; // 定时器
     private StringBuilder routingTableInfo; // 路由表信息
+    private int vaild_time;
 
     public Router(String routerName) {
-        this.routerName = routerName;
+        this.zhongduanhao = routerName;
         this.routingTable = new HashMap<>();
+        this.networkMap = new HashMap<>();
         this.neighbors = new ArrayList<>();
-        this.scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(this::sendUpdates, 0, 2, TimeUnit.SECONDS);
+        this.vaild_time = 0;
     } // end Router()
 
     /**
@@ -62,6 +64,7 @@ public class Router {
         }
         RouteTableEntry entry = new RouteTableEntry(network, 1, this);
         routingTable.put(network, entry);
+        networkMap.put(network.getNetworkName(),network);
     } // end addDirectlyConnectedNetwork()
 
     /**
@@ -95,6 +98,28 @@ public class Router {
     } // end sendUpdates()
 
     /**
+     * 广播路由表更新
+     *
+     * @param sender               相邻路由器
+     * @param RoutingTable 路由更新表
+     */
+    public String RouteUpdateBoardcast(Router sender, Map<Network, RouteTableEntry> RoutingTable) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(sender.getRouterName().substring(3));
+        for (Map.Entry<Network, RouteTableEntry> entry : RoutingTable.entrySet()) {
+            Network destination = entry.getKey(); // 目的网络
+            RouteTableEntry receivedEntry = entry.getValue(); // 路由表项
+            stringBuilder.append(destination.getNetworkName().substring(3));
+            if(receivedEntry.getHops()<10)
+                stringBuilder.append(receivedEntry.getHops()).append("0");
+            else
+                stringBuilder.append(receivedEntry.getHops());
+            stringBuilder.append(receivedEntry.getNextHop().getRouterName().substring(3));
+        }
+        return stringBuilder.toString();
+    } // end receiveUpdate()
+
+    /**
      * 接收来自相邻路由器的路由更新
      *
      * @param sender               相邻路由器
@@ -107,18 +132,20 @@ public class Router {
             int newHops = receivedEntry.getHops() + 1; // 计算新的跳数
             newHops = Math.min(newHops, 16); // 如果收到的跳数已经是16，或者加1后变为16，则直接使用16作为跳数
 
-            RouteTableEntry currentEntry = routingTable.get(destination); // 原来的路由表项
+            Network destination_temp = networkMap.get(destination.getNetworkName());
+            RouteTableEntry currentEntry = routingTable.get(destination_temp); // 原来的路由表项
 
             if (currentEntry == null) {
                 // 原来的路由表中没有目的网络 destination，则把该项目添加到原来的路由表中
                 routingTable.put(destination, new RouteTableEntry(destination, newHops, sender));
+                networkMap.put(destination.getNetworkName(),destination);
             } else { // 在原来的路由表中有目的网络 destination
-                if (currentEntry.getNextHop().equals(sender)) {
+                if (currentEntry.getNextHop().getRouterName().equals(sender.getRouterName())) {
                     // 若下一跳路由器是 sender，则把收到的项目替换原路由表中的项目
-                    routingTable.put(destination, new RouteTableEntry(destination, newHops, sender));
+                    routingTable.put(destination_temp, new RouteTableEntry(destination_temp, newHops, sender));
                 } else if (newHops < currentEntry.getHops()) { // 若下一跳不是 sender
                     // 若收到的项目中的跳数<原来的路由表中的跳数，则进行更新
-                    routingTable.put(destination, new RouteTableEntry(destination, newHops, sender));
+                    routingTable.put(destination_temp, new RouteTableEntry(destination_temp, newHops, sender));
                 }
             }
         }
@@ -163,8 +190,6 @@ public class Router {
      * 路由器故障
      */
     public void failure() {
-        stopScheduler();
-
         for (RouteTableEntry entry : new ArrayList<>(routingTable.values())) {
             entry.setHops(16); // 使用16表示不可达
         }
@@ -195,14 +220,17 @@ public class Router {
         }
     } // end updateRoutingTableForFailedRouter()
 
-    /**
-     * 停止定时器
-     */
-    public void stopScheduler() {
-        if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdown(); // 停止发送路由更新
+    public void remove_neighbor_route(Router router)
+    {
+        Iterator<Map.Entry<Network, RouteTableEntry>> it = routingTable.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Network, RouteTableEntry> entry = it.next();
+            RouteTableEntry routeEntry = entry.getValue();
+            String networkName = routeEntry.getDestination().getNetworkName();
+            if(router.getRouterName().equals(networkName))
+                it.remove();
         }
-    } // end stopScheduler()
+    }
 
     /**
      * 打印路由表信息
@@ -212,7 +240,7 @@ public class Router {
     public String printRoutingTable() {
         routingTableInfo = new StringBuilder();
 
-        routingTableInfo.append(routerName).append("的路由表：\n");
+        routingTableInfo.append(zhongduanhao).append("的路由表：\n");
         routingTableInfo.append("目的网络\t\t跳数\t\t下一跳\n");
 
         /* 保证路由表无重复项 */
@@ -247,11 +275,11 @@ public class Router {
     } // end printRoutingTable()
 
     public String getRouterName() {
-        return routerName;
+        return zhongduanhao;
     }
 
     public void setRouterName(String routerName) {
-        this.routerName = routerName;
+        this.zhongduanhao = routerName;
     }
 
     public Map<Network, RouteTableEntry> getRoutingTable() {
@@ -264,6 +292,16 @@ public class Router {
 
     public List<Router> getNeighbors() {
         return neighbors;
+    }
+
+    public int getVaild_time()
+    {
+        return vaild_time;
+    }
+
+    public void setVaild_time(int vaild_time)
+    {
+        this.vaild_time = vaild_time;
     }
 
     public void setNeighbors(List<Router> neighbors) {

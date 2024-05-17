@@ -54,6 +54,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewSwitcher;
 
+import com.d.commenplayer.Adhoc.Network;
+import com.d.commenplayer.Adhoc.RouteTableEntry;
+import com.d.commenplayer.Adhoc.Router;
 import com.d.commenplayer.MainActivity;
 import com.d.commenplayer.MyReceiver;
 import com.d.commenplayer.R;
@@ -104,6 +107,11 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 public class SimpleActivity extends Activity implements NetBus.OnNetListener {
     private CommenPlayer player; //播放器类
     private WebView webView;
+
+    private Router router;
+
+    private Network network;
+
     private ImageView aispower;
 
     private ImageView duanxinimg;
@@ -249,6 +257,8 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         timer_cnt = new int[50];
 
         webViewSet();
+        router = new Router("12345678");
+        network = new Network("12345678");
 
 //        String checkString="01B30003F0";
 //        String checksumString= GetCheckSum(checkString);
@@ -3296,6 +3306,15 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         return sm.toString();
     }
 
+    private static String sendRouteMingling(int length, String m_comand, String s) {
+        StringBuilder sm = new StringBuilder();
+        StringBuilder checksum = new StringBuilder();
+        checksum.append("01B300").append(intToHex(length)).append(m_comand).append(s);
+        sm.append("FEFCF8F001B300").append(intToHex(length)).append(m_comand)
+                .append(s).append(getCheckSum(checksum.toString(), 4)).append("FCFEF0F8");
+        return sm.toString();
+    }
+
     /**
      * 不带数据的命令发
      *
@@ -3356,6 +3375,17 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
         return ss.toString();
     }
 
+    private static String BCDToString(String s) {
+        StringBuilder ss = new StringBuilder();
+        int leng = s.length();
+
+        for (int i = leng - 1; i > 0; i = i - 2) {
+            ss.append(s.charAt(i - 1));
+            ss.append(s.charAt(i));
+        }
+        return ss.toString();
+    }
+
     /**
      * 和校验，取最后round位
      *
@@ -3407,6 +3437,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     String xingdao = data.substring(43, 46);
                     String qunhao_get =data.substring(36,42);
                     diantaihao.setText("终端号:" + dian_int);
+                    router.setRouterName(dian_int);
                     xingdaohao.setText("信道号:" + xingdao);
                     qunhao.setText("群号:"+qunhao_get);
                     data = "";// data使用完 清空
@@ -4245,6 +4276,9 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                             radarView.saomiaostop();
                     }
                     break;
+                case "75"://收到邻居路由
+                    int len = (Integer.parseInt(data.substring(12,16),16)-3)*2;
+                    break;
                 default:
                     break;
             }
@@ -4935,7 +4969,7 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                 Settings.System.SCREEN_BRIGHTNESS, birghtessValue);
     }
 
-
+    static int route_cnt =0;
     public class Mythread implements Runnable{
         @Override
         public void run() {
@@ -4985,6 +5019,14 @@ public class SimpleActivity extends Activity implements NetBus.OnNetListener {
                     String data = GetSendData(CheckData, CheckSum);
                     sendData(data);
                 }
+                if(route_cnt==10) {
+//                String CheckData = "01B3"+Integer.toHexString(route.length()+3)+"73"+route;
+//                String CheckSum = GetCheckSum(CheckData);
+//                String data = GetSendData(CheckData, CheckSum);
+                    String CheckData = sendRouteMingling( len+ 3, "74", msg);//路由包
+                    sendData(CheckData);
+                }
+                route_cnt++;
             }
         }
     }
